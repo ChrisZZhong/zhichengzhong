@@ -3,7 +3,7 @@ layout: post
 title: "Deploy Application, CICD pipeline"
 date: 2023-06-25
 description: "Deploy Application"
-tag:: Distribued System
+tag: Distributed System
 ---
 
 # Deploy Application

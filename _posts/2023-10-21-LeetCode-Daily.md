@@ -3,7 +3,7 @@ layout: post
 title: "LeetCode daily problems"
 date: 2023-10-21
 description: "LeetCode daily problems"
-tag:: Leetcode Problem
+tag: Leetcode Problem
 ---
 
 ## 2831. Find the Longest Equal Subarray 🟠 05-23-2024

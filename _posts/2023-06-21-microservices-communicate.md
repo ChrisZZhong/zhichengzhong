@@ -3,7 +3,7 @@ layout: post
 title: "microservices communication"
 date: 2023-06-21
 description: "microservices communication"
-tag:: Distribued System
+tag: Distributed System
 ---
 
 # How do microservices communicate?

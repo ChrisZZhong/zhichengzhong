@@ -3,7 +3,7 @@ layout: post
 title: "Debug in Microservices"
 date: 2023-06-14
 description: "Debug in Microservices"
-tag:: Distribued System
+tag: Distributed System
 ---
 
 # Debug in Microservices

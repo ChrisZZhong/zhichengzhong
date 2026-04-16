@@ -3,7 +3,7 @@ layout: post
 title: "Monolith VS Microservices"
 date: 2023-06-20
 description: "Monolith VS Microservices"
-tag:: Distribued System
+tag: Distributed System
 ---
 
 # Monolith VS Microservices

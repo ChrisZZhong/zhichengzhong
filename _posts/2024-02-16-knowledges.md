@@ -1,9 +1,9 @@
 ---
 layout: post
-title: "0 down time & TDD"
+title: "zero down time & TDD"
 date: 2023-06-24
 description: "Knowledge"
-tag:: Distribued System
+tag: Distributed System
 ---
 
 ## TDD (Test Driven Development)

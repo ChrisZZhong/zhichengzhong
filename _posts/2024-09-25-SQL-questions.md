@@ -3,7 +3,7 @@ layout: post
 title: "SQL"
 date: 2023-01-18
 description: "SQL leetcode questions"
-tag: SQL
+tag: Interviews
 ---
 
 # SQL questions

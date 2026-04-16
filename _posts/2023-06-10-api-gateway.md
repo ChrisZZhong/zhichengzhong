@@ -3,7 +3,7 @@ layout: post
 title: "API GateWay"
 date: 2023-06-10
 description: "API GateWay"
-tag:: Distribued System
+tag: Distributed System
 ---
 
 # API GateWay
