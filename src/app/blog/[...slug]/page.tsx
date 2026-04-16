@@ -2,20 +2,27 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllPostSlugs, getPostBySlug, getAllPostsMeta } from '@/lib/posts';
 import BlogPostContent from '@/components/BlogPostContent';
-import { ArrowLeft, Calendar, Tag, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, Tag } from 'lucide-react';
 import type { Metadata } from 'next';
 
 interface Props {
-  params: { slug: string };
+  params: { slug: string[] };
+}
+
+// slug is e.g. ['System Design', '2025-04-15-system-design-url-shorterner']
+function paramsToSlug(parts: string[]): string {
+  return parts.join('/');
 }
 
 export async function generateStaticParams() {
   const slugs = getAllPostSlugs();
-  return slugs.map((slug) => ({ slug }));
+  // Each slug is "TagFolder/filename" — split into array for [...slug]
+  return slugs.map((slug) => ({ slug: slug.split('/') }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const post = getPostBySlug(params.slug);
+  const slug = paramsToSlug(params.slug);
+  const post = getPostBySlug(slug);
   if (!post) return { title: 'Post Not Found' };
   return {
     title: `${post.title} | Zhicheng Zhong`,
@@ -24,10 +31,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function BlogPostPage({ params }: Props) {
-  const post = getPostBySlug(params.slug);
+  const slug = paramsToSlug(params.slug);
+  const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  // Get all posts for navigation
+  // Prev / next within the same tag
   const allPosts = getAllPostsMeta()
     .filter((p) => p.tag === post.tag)
     .sort((a, b) => a.title.localeCompare(b.title));
@@ -56,7 +64,6 @@ export default function BlogPostPage({ params }: Props) {
       <article className="max-w-4xl mx-auto px-6 py-12">
         {/* Post header */}
         <header className="mb-10">
-          {/* Tag + date */}
           <div className="flex items-center gap-3 mb-5">
             <Link href={`/blog?tag=${encodeURIComponent(post.tag)}`}>
               <span className="tag-badge flex items-center gap-1">
@@ -70,7 +77,6 @@ export default function BlogPostPage({ params }: Props) {
             </span>
           </div>
 
-          {/* Title */}
           <h1 className="text-3xl lg:text-4xl font-black text-text-primary leading-tight mb-4">
             {post.title}
           </h1>
@@ -82,12 +88,11 @@ export default function BlogPostPage({ params }: Props) {
           <div className="mt-6 h-px bg-gradient-to-r from-accent-cyan/30 via-accent-purple/20 to-transparent" />
         </header>
 
-        {/* Blog content */}
+        {/* Content */}
         <BlogPostContent content={post.content} />
 
-        {/* Post footer */}
+        {/* Footer */}
         <div className="mt-12 pt-8 border-t border-card-border">
-          {/* Tag */}
           <div className="mb-8">
             <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Filed under</p>
             <Link href="/blog">
@@ -117,7 +122,6 @@ export default function BlogPostPage({ params }: Props) {
             </div>
           )}
 
-          {/* Back to blog */}
           <div className="mt-8 text-center">
             <Link
               href="/blog"
