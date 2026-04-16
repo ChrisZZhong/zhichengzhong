@@ -26,6 +26,6 @@ See [Dependency Injection](https://chriszzhong.github.io/2023/04/Dependency-Inje
 
 They both can be used to get the parameters from the request, but they are used in different scenarios.
 
-- @PathVariable: used to get the parameters from the URL. In Spring, we can customize the URL, such as `http://localhost:8080/user/{id}`, the `{id}` is the parameter, we can use `@PathVariable` to get the parameter.
+- @PathVariable: used to get the parameters from the URL. In Spring, we can customize the URL, such as `https://localhost:8080/user/{id}`, the `{id}` is the parameter, we can use `@PathVariable` to get the parameter.
 
-- @RequestParam: used to get the parameters from the request body (which is the form data), such as `http://localhost:8080/user?id=1`, the `1` is the parameter, we can use `@RequestParam` to get the parameter.
+- @RequestParam: used to get the parameters from the request body (which is the form data), such as `https://localhost:8080/user?id=1`, the `1` is the parameter, we can use `@RequestParam` to get the parameter.

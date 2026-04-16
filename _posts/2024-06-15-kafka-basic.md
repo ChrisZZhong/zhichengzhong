@@ -117,7 +117,7 @@ public class AvroKafkaProducer {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
 
         // Schema Registry 地址（必须）
-        props.put("schema.registry.url", "http://localhost:8081");
+        props.put("schema.registry.url", "https://localhost:8081");
 
         // 幂等性与重试配置
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
