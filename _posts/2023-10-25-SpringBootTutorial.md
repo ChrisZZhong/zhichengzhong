@@ -3,7 +3,7 @@ layout: post
 title: "Set up Basic Spring Boot Environment"
 date: 2023-10-25
 description: "LeetCode daily problems"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 ## Create a Spring Boot Project

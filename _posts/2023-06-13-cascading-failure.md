@@ -3,7 +3,7 @@ layout: post
 title: "Cascading Failure"
 date: 2023-06-13
 description: "Cascading Failure"
-tag: Microservices
+tag:: Distribued System
 ---
 
 # Cascading Failure

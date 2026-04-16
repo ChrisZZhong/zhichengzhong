@@ -3,7 +3,7 @@ layout: post
 title: "Srping Security and Authentication"
 date: 2023-04-11
 description: "Srping Security and Authentication"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Spring Security

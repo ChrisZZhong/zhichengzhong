@@ -3,7 +3,7 @@ layout: post
 title: "Spring Cloud Config"
 date: 2023-06-22
 description: "Spring Cloud Config"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Spring Cloud Config

@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Interview Preparation"
+title: "Java FullStack Interview Knowledge"
 date: 2023-01-10
 description: "frequent questions asked in interviews"
 tag: Interviews

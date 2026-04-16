@@ -2,7 +2,7 @@
 title: "Search design"
 date: 2025-05-16
 description: "summary for search in system design"
-tag: "System Design"
+tag: System Design
 category: "System Design"
 prime: false
 ---

@@ -3,7 +3,7 @@ layout: post
 title: "UB coding final list"
 date: 2025-12-19
 description: "UB coding"
-tag: Algorithms
+tag: OA
 prime: false
 ---
 

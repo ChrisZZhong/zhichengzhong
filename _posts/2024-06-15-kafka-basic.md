@@ -3,7 +3,7 @@ layout: post
 title: "Kafka Basic"
 date: 2024-05-16
 description: "concepts you should know about kafka"
-tag: Key Technologies
+tag: Distributed System
 prime: false
 ---
 

@@ -3,7 +3,7 @@ layout: post
 title: "UB System Design Prep"
 date: 2025-12-19
 description: "UB SD"
-tag: Algorithms
+tag: OA
 prime: false
 ---
 

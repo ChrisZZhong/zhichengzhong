@@ -3,7 +3,7 @@ layout: post
 title: ByteDance
 date: 2026-02-27
 description: ""
-tag: Algorithms
+tag: OA
 prime: false
 ---
 

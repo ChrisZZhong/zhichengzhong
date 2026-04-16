@@ -2,7 +2,7 @@
 title: "Kafka Dead Letter Queue"
 date: 2025-05-16
 description: "This blog introduces Kafka Dead Letter Queues (DLQs) and their role in maintaining the reliability of data pipelines. It explores why DLQs are essential for fault tolerance, how they help prevent message loss, and how organizations implement them in Kafka-based architectures. The post also covers DLQ best practices, configuration steps, and monitoring strategies, highlighting solutions like Confluent Cloud for enhanced scalability and observability."
-tag: "System Design"
+tag: System Design
 category: "System Design"
 prime: false
 ---

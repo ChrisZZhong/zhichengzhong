@@ -3,7 +3,7 @@ layout: post
 title: "Water trapper problems"
 date: 2023-08-07
 description: "water trapper problems"
-tag: LeetCode
+tag: Algorithms
 ---
 
 # 接雨水问题详解

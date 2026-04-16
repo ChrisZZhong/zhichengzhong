@@ -3,7 +3,7 @@ layout: post
 title: "Async (@Async & messaging)"
 date: 2023-06-11
 description: "Async (@Async & messaging)"
-tag: Microservices
+tag: Java & Spring
 ---
 
 # Async (@Async & messaging)

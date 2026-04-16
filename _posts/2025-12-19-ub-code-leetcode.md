@@ -3,7 +3,7 @@ layout: post
 title: UB coding leetcode
 date: 2025-12-19
 description: UB coding leetcode
-tag: Algorithms
+tag: OA
 prime: false
 ---
 

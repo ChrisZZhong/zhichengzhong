@@ -3,7 +3,7 @@ layout: post
 title: "Dependency injection and IOC"
 date: 2023-04-06
 description: "Dependency injection"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Dependency injection

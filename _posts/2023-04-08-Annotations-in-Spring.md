@@ -3,7 +3,7 @@ layout: post
 title: "Common Annotations in Spring"
 date: 2023-04-08
 description: "Annotations"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Common Annotations in Spring

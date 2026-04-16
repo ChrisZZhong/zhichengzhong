@@ -3,7 +3,7 @@ layout: post
 title: "UB coding prac hub & other"
 date: 2025-12-19
 description: "UB coding prac hub"
-tag: Algorithms
+tag: OA
 prime: false
 ---
 

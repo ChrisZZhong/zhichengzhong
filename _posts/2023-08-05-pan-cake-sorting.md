@@ -3,7 +3,7 @@ layout: post
 title: "Pan cake sorting"
 date: 2023-08-05
 description: "pan cake sorting"
-tag: LeetCode
+tag: Algorithms
 ---
 
 # 烧饼排序

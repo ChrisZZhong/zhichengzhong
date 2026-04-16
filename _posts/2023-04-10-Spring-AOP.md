@@ -3,7 +3,7 @@ layout: post
 title: "Srping AOP"
 date: 2023-04-10
 description: "Srping AOP"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # AOP - Aspect Oriented Programming

@@ -3,7 +3,7 @@ layout: post
 title: "Spring Boot"
 date: 2023-04-07
 description: "Spring Boot"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Spring Boot (knowledge)

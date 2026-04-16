@@ -3,7 +3,7 @@ layout: post
 title: "Application Monitoring (Actuator & Logging)"
 date: 2023-06-19
 description: "Application Monitoring (Actuator & Logging)"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Application Monitoring

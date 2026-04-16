@@ -3,7 +3,7 @@ layout: post
 title: "crack Java 8 Stream"
 date: 2023-03-30
 description: "Java Stream knowledge"
-tag: Java
+tag: Java & Spring
 ---
 
 ## Stream

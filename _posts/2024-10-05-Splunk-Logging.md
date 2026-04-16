@@ -3,7 +3,7 @@ layout: post
 title: Debug in distributed system (Splunk)
 date: 2024-05-21
 description: "Splunk"
-tag: Distributed system
+tag: Distributed System
 ---
 
 ## Splunk

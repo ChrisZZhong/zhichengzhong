@@ -3,7 +3,7 @@ layout: post
 title: "Transactions in Spring (monolithic)"
 date: 2023-04-09
 description: "Transactions"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Transactions in Spring (monolithic)

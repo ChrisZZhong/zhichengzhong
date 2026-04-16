@@ -3,7 +3,7 @@ layout: post
 title: "kafka & redis"
 date: 2024-03-07
 description: "kafka & redis"
-tag: Distributed system
+tag: Distributed System
 ---
 
 ## Kafka & Redis cache

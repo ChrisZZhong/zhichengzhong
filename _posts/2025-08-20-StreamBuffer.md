@@ -2,7 +2,7 @@
 title: "StreamBuffer"
 date: 2025-06-30
 description: "StreamBuffer"
-tag: algorithms
+tag: Java & Spring
 prime: false
 ---
 

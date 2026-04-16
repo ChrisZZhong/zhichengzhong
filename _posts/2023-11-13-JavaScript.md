@@ -3,7 +3,7 @@ layout: post
 title: "JavaScript questions"
 date: 2023-11-13
 description: "JavaScript"
-tag: Interviews
+tag: Frontend
 ---
 
 ## What is ES6?

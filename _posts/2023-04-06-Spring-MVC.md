@@ -3,7 +3,7 @@ layout: post
 title: "Spring MVC"
 date: 2023-04-06
 description: "Spring MVC"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # Spring MVC (All important points)

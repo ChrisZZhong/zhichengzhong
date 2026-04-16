@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Software Interview problems"
+title: "Java Backend Interview problems"
 date: 2023-10-11
 description: "Software Interview problems"
 tag: Interviews

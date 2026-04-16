@@ -3,7 +3,7 @@ layout: post
 title: "Spring Data Repository & JPA"
 date: 2023-04-13
 description: "Distinguish between Spring Data JPA, JPA"
-tag: Spring Framework
+tag: Java & Spring
 ---
 
 # JPA (Java Persistence API)

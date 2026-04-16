@@ -3,7 +3,7 @@ layout: post
 title: "Prefix Sum problems"
 date: 2023-08-07
 description: "Prefix Sum problems"
-tag: LeetCode
+tag: Algorithms
 ---
 
 # Prefix Sum problems

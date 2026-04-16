@@ -3,7 +3,7 @@ layout: post
 title: "UB Phone"
 date: 2025-06-24
 description: "interview problems"
-tag: Algorithms
+tag: Interviews
 prime: false
 ---
 
