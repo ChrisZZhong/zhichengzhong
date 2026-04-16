@@ -10,8 +10,8 @@ const contacts = [
   {
     icon: Mail,
     label: 'Email',
-    value: 'your@email.com',
-    href: 'mailto:your@email.com',
+    value: 'zzcjob397@gmail.com',
+    href: 'mailto:zzcjob397@gmail.com',
     description: 'Best for detailed inquiries & collaboration proposals',
     color: 'from-accent-cyan/20 to-accent-blue/10',
     borderColor: 'border-accent-cyan/20 hover:border-accent-cyan/50',
@@ -20,8 +20,8 @@ const contacts = [
   {
     icon: Linkedin,
     label: 'LinkedIn',
-    value: 'linkedin.com/in/yourprofile',
-    href: 'https://linkedin.com/in/yourprofile',
+    value: 'linkedin.com/in/zhicheng-z',
+    href: 'https://www.linkedin.com/in/zhicheng-z-35805722b/',
     description: 'Connect professionally and follow my career updates',
     color: 'from-blue-500/10 to-blue-600/5',
     borderColor: 'border-blue-500/20 hover:border-blue-500/50',
@@ -30,8 +30,8 @@ const contacts = [
   {
     icon: Github,
     label: 'GitHub',
-    value: 'github.com/yourusername',
-    href: 'https://github.com/yourusername',
+    value: 'github.com/ChrisZZhong',
+    href: 'https://github.com/ChrisZZhong',
     description: 'Check out my open-source projects and contributions',
     color: 'from-slate-500/10 to-slate-600/5',
     borderColor: 'border-slate-500/20 hover:border-slate-500/50',
@@ -40,8 +40,8 @@ const contacts = [
   {
     icon: Phone,
     label: 'Phone',
-    value: '+1 (XXX) XXX-XXXX',
-    href: 'tel:+1XXXXXXXXXX',
+    value: '202-725-1579',
+    href: 'tel:+12027251579',
     description: 'Available for quick calls during business hours',
     color: 'from-green-500/10 to-green-600/5',
     borderColor: 'border-green-500/20 hover:border-green-500/50',

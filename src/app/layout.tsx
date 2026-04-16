@@ -3,11 +3,11 @@ import './globals.css';
 import Navigation from '@/components/Navigation';
 
 export const metadata: Metadata = {
-  title: 'Zhicheng Zhong | Software Engineer',
-  description: 'Personal portfolio of Zhicheng Zhong — Software Engineer, System Design enthusiast, and backend developer.',
+  title: 'Zhicheng Zhong | Software Developer',
+  description: 'Personal portfolio of Zhicheng Zhong — Software Developer specializing in AI/RAG systems, distributed microservices, and scalable backend architecture.',
   openGraph: {
-    title: 'Zhicheng Zhong | Software Engineer',
-    description: 'Personal portfolio of Zhicheng Zhong.',
+    title: 'Zhicheng Zhong | Software Developer',
+    description: 'Software Developer specializing in AI/RAG systems and distributed microservices. M.S. CS @ Georgetown.',
     type: 'website',
   },
 };

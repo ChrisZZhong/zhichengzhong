@@ -72,7 +72,7 @@ export default function HomeClient({ recentPosts }: Props) {
             {/* Mini social links below avatar */}
             <div className="flex gap-3">
               <a
-                href="https://github.com/YOUR_GITHUB"
+                href="https://github.com/ChrisZZhong"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 glass-card flex items-center justify-center text-text-muted hover:text-accent-cyan hover:border-accent-cyan/30 transition-all"
@@ -80,7 +80,7 @@ export default function HomeClient({ recentPosts }: Props) {
                 <Github size={16} />
               </a>
               <a
-                href="https://linkedin.com/in/YOUR_LINKEDIN"
+                href="https://www.linkedin.com/in/zhicheng-z-35805722b/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 glass-card flex items-center justify-center text-text-muted hover:text-accent-cyan hover:border-accent-cyan/30 transition-all"
@@ -88,7 +88,7 @@ export default function HomeClient({ recentPosts }: Props) {
                 <Linkedin size={16} />
               </a>
               <a
-                href="mailto:YOUR_EMAIL"
+                href="mailto:zzcjob397@gmail.com"
                 className="w-9 h-9 glass-card flex items-center justify-center text-text-muted hover:text-accent-cyan hover:border-accent-cyan/30 transition-all"
               >
                 <Mail size={16} />
@@ -122,11 +122,11 @@ export default function HomeClient({ recentPosts }: Props) {
               className="text-xl lg:text-2xl text-text-muted font-medium mb-6"
               style={{ animation: 'slide-up 0.6s ease-out 0.3s both' }}
             >
-              Software Engineer
+              Software Developer
               <span className="text-accent-cyan mx-2">/</span>
-              System Design
+              AI & RAG Systems
               <span className="text-accent-cyan mx-2">/</span>
-              Backend
+              Distributed Systems
             </p>
 
             {/* Bio */}
@@ -134,9 +134,9 @@ export default function HomeClient({ recentPosts }: Props) {
               className="text-text-muted leading-relaxed max-w-xl mb-8 text-base lg:text-lg"
               style={{ animation: 'slide-up 0.6s ease-out 0.4s both' }}
             >
-              Building scalable distributed systems and exploring the intersection of
-              software engineering and system architecture. Passionate about microservices,
-              Kafka, and solving complex engineering challenges.
+              M.S. Computer Science @ Georgetown. Building production RAG-based AI agents,
+              event-driven microservices, and scalable distributed systems. Currently at
+              Madison-Davis, previously at Fiserv and Tencent.
             </p>
 
             {/* Tech stack chips */}
@@ -144,7 +144,7 @@ export default function HomeClient({ recentPosts }: Props) {
               className="flex flex-wrap gap-2 mb-10 justify-center lg:justify-start"
               style={{ animation: 'slide-up 0.6s ease-out 0.5s both' }}
             >
-              {['Java', 'Spring Boot', 'Kafka', 'Redis', 'System Design', 'Distributed Systems'].map((tech) => (
+              {['Python', 'Java', 'RAG / LLM', 'Kafka', 'Spring Boot', 'Kubernetes', 'AWS'].map((tech) => (
                 <span
                   key={tech}
                   className="px-3 py-1 text-xs font-mono font-medium rounded border border-accent-blue/20 bg-accent-blue/5 text-slate-400 hover:border-accent-cyan/30 hover:text-accent-cyan transition-all"
@@ -220,18 +220,25 @@ export default function HomeClient({ recentPosts }: Props) {
           <div className="mt-12 grid md:grid-cols-2 gap-5">
             {[
               {
-                company: 'Your Company',
-                role: 'Software Engineer',
-                period: '2023 – Present',
-                tags: ['Java', 'Spring Boot', 'Kafka'],
-                placeholder: true,
+                company: 'Madison-Davis',
+                role: 'Software Developer',
+                period: 'Oct 2024 – Present',
+                location: 'New York, NY',
+                tags: ['Python', 'FastAPI', 'RAG', 'PGVector', 'Airflow', 'AWS'],
               },
               {
-                company: 'Previous Company',
-                role: 'Backend Developer',
-                period: '2021 – 2023',
-                tags: ['Microservices', 'Redis', 'Docker'],
-                placeholder: true,
+                company: 'Fiserv',
+                role: 'Software Engineer',
+                period: 'Jul 2023 – Oct 2024',
+                location: 'Berkeley Heights, NJ',
+                tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium'],
+              },
+              {
+                company: 'Tencent',
+                role: 'Backend Developer Intern',
+                period: 'Jul 2020 – Oct 2020',
+                location: 'Shenzhen, China',
+                tags: ['Go', 'gRPC', 'Druid', 'AIOps'],
               },
             ].map((exp) => (
               <div key={exp.company} className="glass-card p-6">
@@ -239,17 +246,15 @@ export default function HomeClient({ recentPosts }: Props) {
                   <div>
                     <h3 className="font-bold text-text-primary">{exp.company}</h3>
                     <p className="text-accent-cyan text-sm">{exp.role}</p>
+                    <p className="text-text-muted text-xs mt-0.5">{exp.location}</p>
                   </div>
-                  <span className="text-xs text-text-muted font-mono">{exp.period}</span>
+                  <span className="text-xs text-text-muted font-mono whitespace-nowrap ml-2">{exp.period}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {exp.tags.map((t) => (
                     <span key={t} className="tag-badge">{t}</span>
                   ))}
                 </div>
-                {exp.placeholder && (
-                  <p className="text-xs text-text-muted mt-3 italic">Details coming soon...</p>
-                )}
               </div>
             ))}
           </div>
@@ -276,9 +281,9 @@ export default function HomeClient({ recentPosts }: Props) {
 
           <div className="mt-12 flex flex-wrap justify-center gap-4">
             {[
-              { icon: Mail, label: 'Email', href: 'mailto:YOUR_EMAIL', value: 'your@email.com' },
-              { icon: Linkedin, label: 'LinkedIn', href: 'https://linkedin.com/in/YOUR_LINKEDIN', value: 'linkedin.com/in/...' },
-              { icon: Github, label: 'GitHub', href: 'https://github.com/YOUR_GITHUB', value: 'github.com/...' },
+              { icon: Mail, label: 'Email', href: 'mailto:zzcjob397@gmail.com', value: 'zzcjob397@gmail.com' },
+              { icon: Linkedin, label: 'LinkedIn', href: 'https://www.linkedin.com/in/zhicheng-z-35805722b/', value: 'linkedin.com/in/zhicheng-z' },
+              { icon: Github, label: 'GitHub', href: 'https://github.com/ChrisZZhong', value: 'github.com/ChrisZZhong' },
             ].map(({ icon: Icon, label, href, value }) => (
               <a
                 key={label}

@@ -1,56 +1,72 @@
 import type { Metadata } from 'next';
-import { Briefcase, Code2, GraduationCap, Star, Wrench } from 'lucide-react';
+import { Briefcase, GraduationCap, Wrench, Code2 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Experience | Zhicheng Zhong',
-  description: 'Professional experience, education, and skills.',
+  description: 'Professional experience, education, and skills of Zhicheng Zhong.',
 };
 
 const experiences = [
   {
-    company: 'Your Company Name',
-    role: 'Software Engineer',
-    period: '2023 – Present',
-    location: 'City, State',
-    description: [
-      'Designed and implemented distributed microservices handling X requests/second',
-      'Built event-driven pipelines using Apache Kafka for real-time data processing',
-      'Improved system reliability from 99.5% to 99.99% SLA through chaos engineering',
+    company: 'Madison-Davis',
+    role: 'Software Developer',
+    period: 'Oct 2024 – Present',
+    location: 'New York, NY',
+    highlights: [
+      'Built and productionized an internal RAG-based AI agent tool using Python and FastAPI, reducing average query resolution time by 60% and enabling scalable, low-latency knowledge retrieval for engineering teams.',
+      'Implemented and optimized hybrid retrieval (BM25 + vector search) on AWS PostgreSQL (PGVector), improving Recall@5 by 32% and MRR by 0.18, reducing hallucination in downstream generation.',
+      'Developed a query understanding module integrating multi-query expansion (MQE), query rewriting, and decomposition, improving complex and multi-hop query success rate by 28%.',
+      'Implemented Confluence ingestion with semantic chunking (20% overlap), increasing embedding relevance by 25%, reducing hallucination-prone retrieval by 30%, and expanding corpus coverage by 35%.',
+      'Developed an incremental corpus refresh workflow using Airflow and Query Deserves Freshness, reducing embedding compute cost by 70% while maintaining >99% data freshness.',
+      'Evaluated and iteratively improved RAG quality using RAGAS, achieving 92% faithfulness and 89% answer relevancy, increasing retrieval precision (+21%) and recall (+27%).',
     ],
-    tags: ['Java', 'Spring Boot', 'Kafka', 'Redis', 'Kubernetes'],
-    type: 'work',
+    tags: ['Python', 'FastAPI', 'RAG', 'PGVector', 'BM25', 'LangGraph', 'Airflow', 'AWS', 'RAGAS'],
   },
   {
-    company: 'Previous Company Name',
-    role: 'Backend Developer',
-    period: '2021 – 2023',
-    location: 'City, State',
-    description: [
-      'Developed RESTful APIs serving millions of daily active users',
-      'Optimized database queries reducing p99 latency by 40%',
-      'Led migration from monolith to microservices architecture',
+    company: 'Fiserv',
+    role: 'Software Engineer',
+    period: 'Jul 2023 – Oct 2024',
+    location: 'Berkeley Heights, NJ',
+    highlights: [
+      'Refactored a monolithic payment orchestration service into horizontally scalable event-driven microservices on OpenShift (Kubernetes) using Java and Spring Boot, enabling 3× peak traffic growth.',
+      'Implemented Transactional Outbox with CDC (Debezium) pattern to decouple email receipt generation from the core payment workflow, publishing domain events to Kafka with at-least-once delivery and idempotent consumers, improving notification reliability to 99.9%.',
+      'Built a fault-tolerant retry framework with exponential backoff and jitter to handle transient downstream failures, integrating Dead Letter Queue (DLQ) routing and replay capability, reducing long-tail notification failures by ~90%.',
     ],
-    tags: ['Java', 'Spring MVC', 'MySQL', 'Docker', 'CI/CD'],
-    type: 'work',
+    tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'OpenShift', 'Debezium', 'CDC', 'Microservices'],
+  },
+  {
+    company: 'Tencent',
+    role: 'Backend Developer Intern',
+    period: 'Jul 2020 – Oct 2020',
+    location: 'Shenzhen, China',
+    highlights: [
+      'Refactored an AIOps anomaly detection platform for QQ Browser using Go and gRPC, deployed minute-level multi-algorithm anomaly detection & root cause analysis with results in Druid OLAP DB, cutting KPI triage time from hours to minutes.',
+    ],
+    tags: ['Go', 'gRPC', 'Druid', 'AIOps', 'Anomaly Detection'],
   },
 ];
 
 const education = [
   {
-    school: 'Your University',
-    degree: 'Bachelor of Science in Computer Science',
-    period: '2017 – 2021',
-    gpa: '3.X / 4.0',
-    highlights: ['Algorithms & Data Structures', 'Operating Systems', 'Distributed Computing'],
+    school: 'Georgetown University',
+    location: 'Washington, D.C.',
+    degree: 'M.S. in Computer Science',
+    period: 'Aug 2021 – May 2023',
+  },
+  {
+    school: 'Nankai University',
+    location: 'Tianjin, China',
+    degree: 'B.S. in Computer Science',
+    period: 'Sep 2017 – Jun 2021',
   },
 ];
 
-const skills = {
-  'Languages': ['Java', 'Python', 'TypeScript', 'SQL'],
-  'Frameworks': ['Spring Boot', 'Spring MVC', 'Flask', 'Next.js'],
-  'Infrastructure': ['Kafka', 'Redis', 'Docker', 'Kubernetes', 'AWS'],
-  'Databases': ['MySQL', 'PostgreSQL', 'MongoDB', 'DynamoDB'],
-  'Tools': ['Git', 'Jenkins', 'Splunk', 'Grafana', 'Newman'],
+const skills: Record<string, string[]> = {
+  'Languages': ['Python', 'Java', 'Go', 'JavaScript', 'SQL'],
+  'LLM & RAG': ['RAG (Retriever-Augmented Generation)', 'Vector Search (PGVector, FAISS)', 'Semantic Embeddings', 'Query Understanding (MQE, Rewriting)', 'Prompt Engineering', 'LangGraph', 'RAGAS'],
+  'Backend & Distributed Systems': ['FastAPI', 'Spring Boot', 'RESTful APIs', 'Kafka', 'Event-Driven Architecture', 'Microservices', 'gRPC'],
+  'Databases & Storage': ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'MS SQL Server'],
+  'Cloud & DevOps': ['AWS (EC2, S3, RDS, IAM)', 'GCP', 'Docker', 'Kubernetes', 'Helm', 'CI/CD', 'Git'],
 };
 
 export default function ExperiencePage() {
@@ -74,13 +90,15 @@ export default function ExperiencePage() {
             My <span className="gradient-text">Experience</span>
           </h1>
           <p className="text-text-muted text-lg max-w-xl">
-            A collection of roles, projects, and skills I&apos;ve accumulated as a software engineer.
+            Software developer specializing in AI/RAG systems, distributed microservices,
+            and scalable backend architecture.
           </p>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-6 mt-8 space-y-12">
-        {/* Work Experience */}
+
+        {/* ── Work Experience ─────────────────────────────────────────── */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center">
@@ -89,8 +107,7 @@ export default function ExperiencePage() {
             <h2 className="text-xl font-bold text-text-primary">Work Experience</h2>
           </div>
 
-          {/* Timeline */}
-          <div className="relative pl-8 border-l border-card-border space-y-8">
+          <div className="relative pl-8 border-l border-card-border space-y-10">
             {experiences.map((exp, i) => (
               <div key={i} className="relative">
                 {/* Timeline dot */}
@@ -99,9 +116,10 @@ export default function ExperiencePage() {
                 </div>
 
                 <div className="glass-card p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                  {/* Header */}
+                  <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
                     <div>
-                      <h3 className="font-bold text-text-primary text-lg">{exp.role}</h3>
+                      <h3 className="font-bold text-text-primary text-lg leading-tight">{exp.role}</h3>
                       <p className="text-accent-cyan font-semibold">{exp.company}</p>
                       <p className="text-text-muted text-sm">{exp.location}</p>
                     </div>
@@ -110,16 +128,18 @@ export default function ExperiencePage() {
                     </span>
                   </div>
 
-                  <ul className="mt-4 space-y-2">
-                    {exp.description.map((item, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm text-text-muted">
-                        <span className="text-accent-cyan mt-1.5 flex-shrink-0">▸</span>
-                        {item}
+                  {/* Bullet points */}
+                  <ul className="space-y-2.5 mb-4">
+                    {exp.highlights.map((item, j) => (
+                      <li key={j} className="flex items-start gap-2.5 text-sm text-text-muted leading-relaxed">
+                        <span className="text-accent-cyan mt-1 flex-shrink-0 text-xs">▸</span>
+                        <span>{item}</span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="flex flex-wrap gap-2 mt-4">
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 pt-3 border-t border-card-border">
                     {exp.tags.map((tag) => (
                       <span key={tag} className="tag-badge">{tag}</span>
                     ))}
@@ -130,7 +150,7 @@ export default function ExperiencePage() {
           </div>
         </section>
 
-        {/* Education */}
+        {/* ── Education ───────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center">
@@ -139,30 +159,25 @@ export default function ExperiencePage() {
             <h2 className="text-xl font-bold text-text-primary">Education</h2>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             {education.map((edu, i) => (
               <div key={i} className="glass-card p-6">
-                <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                   <div>
-                    <h3 className="font-bold text-text-primary">{edu.degree}</h3>
-                    <p className="text-accent-purple font-semibold">{edu.school}</p>
-                    {edu.gpa && <p className="text-text-muted text-sm">GPA: {edu.gpa}</p>}
+                    <h3 className="font-bold text-text-primary">{edu.school}</h3>
+                    <p className="text-accent-purple font-medium text-sm">{edu.degree}</p>
+                    <p className="text-text-muted text-sm">{edu.location}</p>
                   </div>
                   <span className="text-xs text-text-muted font-mono bg-card-bg border border-card-border rounded-full px-3 py-1 whitespace-nowrap">
                     {edu.period}
                   </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {edu.highlights.map((h) => (
-                    <span key={h} className="tag-badge">{h}</span>
-                  ))}
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Skills */}
+        {/* ── Skills ──────────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center">
@@ -173,9 +188,9 @@ export default function ExperiencePage() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             {Object.entries(skills).map(([category, items]) => (
-              <div key={category} className="glass-card p-5">
+              <div key={category} className={`glass-card p-5 ${category === 'LLM & RAG' ? 'sm:col-span-2' : ''}`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <Code2 size={14} className="text-accent-cyan" />
+                  <Code2 size={14} className="text-accent-cyan flex-shrink-0" />
                   <h3 className="font-semibold text-text-primary text-sm">{category}</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -188,13 +203,6 @@ export default function ExperiencePage() {
           </div>
         </section>
 
-        {/* Note */}
-        <div className="glass-card p-5 border-accent-cyan/20 text-center">
-          <Star size={16} className="text-accent-cyan mx-auto mb-2" />
-          <p className="text-text-muted text-sm italic">
-            This page is under construction. More details coming soon!
-          </p>
-        </div>
       </div>
     </div>
   );
