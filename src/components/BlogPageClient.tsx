@@ -125,7 +125,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
               </button>
 
               <div className="mt-2 space-y-0.5">
-                {tags.map((tag) => (
+                {[...tags].sort((a, b) => (tagCounts[b] || 0) - (tagCounts[a] || 0)).map((tag) => (
                   <button
                     key={tag}
                     onClick={() => setActiveTag(activeTag === tag ? null : tag)}
