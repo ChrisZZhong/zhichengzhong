@@ -8,4 +8,4 @@ tag: AI Agent
 
 # Agent Harness Engineering
 
-<img src='/media/AIAgent/Agent_ARchitecture.jpg'>
+<img src='/media/AIAgent/Agent_Architecture.jpg'>
