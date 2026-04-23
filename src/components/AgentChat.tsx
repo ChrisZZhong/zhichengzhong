@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, Square, Search, Calendar, Cpu, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Bot, Send, Square, Search, Calendar, Cpu, ChevronDown, ChevronUp } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { API_URL } from '@/lib/config';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -75,13 +77,47 @@ function MessageBubble({ msg }: { msg: Message }) {
 
       <div className={`max-w-[80%] ${isHuman ? 'order-1' : ''}`}>
         <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
             isHuman
               ? 'bg-gradient-to-br from-accent-cyan/20 to-accent-purple/20 border border-accent-cyan/30 text-text-primary rounded-tr-sm'
               : 'glass-card text-text-primary rounded-tl-sm'
           }`}
         >
-          {msg.content}
+          {isHuman ? (
+            <span className="whitespace-pre-wrap">{msg.content}</span>
+          ) : (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold text-text-primary">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="text-text-primary">{children}</li>,
+                code: ({ children, className }) => {
+                  const isBlock = className?.includes('language-');
+                  return isBlock ? (
+                    <code className="block bg-black/30 rounded-lg px-3 py-2 my-2 font-mono text-xs text-accent-cyan overflow-x-auto whitespace-pre">{children}</code>
+                  ) : (
+                    <code className="bg-black/30 rounded px-1.5 py-0.5 font-mono text-xs text-accent-cyan">{children}</code>
+                  );
+                },
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent-cyan underline underline-offset-2 hover:text-accent-purple transition-colors">{children}</a>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-2 border-accent-cyan/40 pl-3 my-2 text-text-muted italic">{children}</blockquote>
+                ),
+                hr: () => <hr className="border-card-border my-3" />,
+                h1: ({ children }) => <h1 className="font-bold text-base mb-1 text-text-primary">{children}</h1>,
+                h2: ({ children }) => <h2 className="font-semibold text-sm mb-1 text-text-primary">{children}</h2>,
+                h3: ({ children }) => <h3 className="font-medium text-sm mb-1 text-text-primary">{children}</h3>,
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
+          )}
           {msg.isStreaming && (
             <span className="inline-block w-2 h-4 bg-accent-cyan ml-0.5 align-middle animate-pulse rounded-sm" />
           )}
