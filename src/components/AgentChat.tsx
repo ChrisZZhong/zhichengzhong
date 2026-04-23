@@ -32,7 +32,7 @@ function ToolBadge({ events }: { events: ToolEvent[] }) {
   const [open, setOpen] = useState(false);
   if (!events.length) return null;
 
-  const uniqueTools = [...new Set(events.filter(e => e.type === 'start').map(e => e.name))];
+  const uniqueTools = Array.from(new Set(events.filter(e => e.type === 'start').map(e => e.name)));
 
   return (
     <div className="mt-2 text-xs">
