@@ -180,7 +180,7 @@ export default function AgentChat() {
     setEnabledTools((prev) =>
       allActive
         ? prev.filter((t) => !targets.includes(t))
-        : [...new Set([...prev, ...targets])]
+        : Array.from(new Set([...prev, ...targets]))
     );
   };
 
