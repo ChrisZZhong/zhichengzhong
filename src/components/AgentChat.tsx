@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, Square, Search, Calendar, Cpu, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, Send, Square, Search, Calendar, Cpu, ChevronDown, ChevronUp, Mic, MicOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { API_URL } from '@/lib/config';
@@ -165,6 +165,76 @@ export default function AgentChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const baseInputRef = useRef(''); // committed text before current voice session
+
+  // Voice input state
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<'zh-CN' | 'en-US'>('en-US');
+
+  const stopVoice = useCallback(() => {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setIsListening(false);
+  }, []);
+
+  const toggleVoice = useCallback(() => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('Speech Recognition is not supported. Please use Chrome or Edge.');
+      return;
+    }
+
+    if (isListening) {
+      stopVoice();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = voiceLang;
+    recognition.interimResults = true;
+    recognition.continuous = true;     // keep listening until user stops manually
+    recognition.maxAlternatives = 1;
+
+    // Save whatever was already typed before voice starts
+    baseInputRef.current = input;
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (e: any) => {
+      let newFinals = '';
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) newFinals += transcript;
+        else interim += transcript;
+      }
+      // Commit new finals into the base
+      if (newFinals) baseInputRef.current += newFinals;
+      // Show base + current interim in the textarea
+      setInput(baseInputRef.current + interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+      // Ensure input reflects only committed text (no trailing interim)
+      setInput(baseInputRef.current);
+    };
+
+    recognition.onerror = (e: any) => {
+      // 'no-speech' is normal (silence timeout) — just restart quietly
+      if (e.error === 'no-speech') return;
+      console.error('Speech recognition error:', e.error);
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [isListening, voiceLang, input, stopVoice]);
   // Token queue for typewriter effect
   const tokenQueueRef = useRef<string[]>([]);
   const drainIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -255,8 +325,10 @@ export default function AgentChat() {
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
 
+    stopVoice();
     setMessages((prev) => [...prev, humanMsg, assistantMsg]);
     setInput('');
+    baseInputRef.current = '';
     setIsStreaming(true);
     tokenQueueRef.current = [];
 
@@ -384,7 +456,7 @@ export default function AgentChat() {
       );
       setIsStreaming(false);
     }
-  }, [input, isStreaming, messages, enabledTools, startDrain, stopDrain]);
+  }, [input, isStreaming, messages, enabledTools, startDrain, stopDrain, stopVoice]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -425,7 +497,7 @@ export default function AgentChat() {
 
       {/* ── Input ── */}
       <div className="px-4 py-3 border-t border-card-border">
-        <div className="flex items-end gap-3 glass-card px-4 py-2 rounded-2xl">
+        <div className="flex items-end gap-2 glass-card px-4 py-2 rounded-2xl">
           <textarea
             ref={inputRef}
             rows={1}
@@ -436,6 +508,35 @@ export default function AgentChat() {
             disabled={isStreaming}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-muted resize-none outline-none py-1.5 leading-relaxed min-h-0"
           />
+
+          {/* Mic button + language toggle */}
+          {!isStreaming && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* zh / en toggle — only show when not listening */}
+              {!isListening && (
+                <button
+                  onClick={() => setVoiceLang((l) => l === 'zh-CN' ? 'en-US' : 'zh-CN')}
+                  className="text-[10px] font-mono font-semibold text-text-muted/50 hover:text-accent-cyan transition-colors w-7 text-center"
+                  title="Switch language"
+                >
+                  {voiceLang === 'zh-CN' ? '中' : 'EN'}
+                </button>
+              )}
+              <button
+                onClick={toggleVoice}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                  isListening
+                    ? 'bg-red-500/20 border border-red-500/50 text-red-400 animate-pulse'
+                    : 'bg-accent-purple/10 border border-accent-purple/30 text-accent-purple hover:bg-accent-purple/20'
+                }`}
+                aria-label={isListening ? 'Stop recording' : 'Voice input'}
+              >
+                {isListening ? <MicOff size={14} /> : <Mic size={14} />}
+              </button>
+            </div>
+          )}
+
+          {/* Send / Stop */}
           {isStreaming ? (
             <button
               onClick={stop}
