@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Bot } from 'lucide-react';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -58,6 +58,17 @@ export default function Navigation() {
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
           <Link
+            href="/agent"
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${
+              pathname === '/agent'
+                ? 'bg-accent-cyan/10 border-accent-cyan/40 text-accent-cyan'
+                : 'border-accent-purple/30 text-accent-purple hover:bg-accent-purple/10 hover:border-accent-purple/60'
+            }`}
+          >
+            <Bot size={14} />
+            AI Agent
+          </Link>
+          <Link
             href="/connect"
             className="px-4 py-1.5 text-sm font-medium rounded-full border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 hover:border-accent-cyan/60 transition-all duration-200"
           >
@@ -92,6 +103,16 @@ export default function Navigation() {
               {label}
             </Link>
           ))}
+          <Link
+            href="/agent"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+              pathname === '/agent' ? 'text-accent-purple' : 'text-text-muted hover:text-accent-purple'
+            }`}
+          >
+            <Bot size={14} />
+            AI Agent
+          </Link>
         </div>
       )}
     </nav>

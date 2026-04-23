@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Tag } from 'lucide-react';
+import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Tag, Bot, Sparkles } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 
 interface Props {
@@ -179,6 +179,59 @@ export default function HomeClient({ recentPosts }: Props) {
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce opacity-40">
           <span className="text-xs text-text-muted font-mono tracking-widest">SCROLL</span>
           <ArrowDown size={16} className="text-accent-cyan" />
+        </div>
+      </section>
+
+      {/* ─── AI AGENT CTA ──────────────────────────────────────────── */}
+      <section className="py-16 px-6 relative">
+        <div className="max-w-6xl mx-auto">
+          <div className="relative glass-card rounded-2xl overflow-hidden p-8 lg:p-12 flex flex-col lg:flex-row items-center gap-8">
+            {/* Background glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-accent-purple/5 via-transparent to-accent-cyan/5 pointer-events-none" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-accent-purple/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Icon */}
+            <div className="relative flex-shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent-purple/20 to-accent-cyan/20 border border-accent-purple/30 flex items-center justify-center">
+                <Bot size={36} className="text-accent-purple" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-space flex items-center justify-center">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-ping absolute" />
+                <span className="w-1.5 h-1.5 bg-green-300 rounded-full" />
+              </div>
+            </div>
+
+            {/* Text */}
+            <div className="relative flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent-purple/30 bg-accent-purple/5 text-accent-purple text-xs font-mono font-medium mb-3 tracking-widest">
+                <Sparkles size={10} />
+                NEW — AI PORTFOLIO AGENT
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-black text-text-primary mb-3">
+                Chat with My AI Agent
+              </h2>
+              <p className="text-text-muted text-sm leading-relaxed max-w-lg mb-6">
+                Powered by Gemini 2.5 Flash + RAG. Ask anything about my blog posts,
+                explore my technical writing, or schedule a meeting — all through a
+                streaming AI chat interface.
+              </p>
+              <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                <Link
+                  href="/agent"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent-purple/20 to-accent-cyan/20 border border-accent-purple/40 text-accent-purple font-semibold text-sm hover:from-accent-purple/30 hover:to-accent-cyan/30 hover:border-accent-purple/60 transition-all duration-200"
+                >
+                  <Bot size={15} />
+                  Try the Agent
+                </Link>
+                <Link
+                  href="/blog"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-card-border text-text-muted font-semibold text-sm hover:border-accent-cyan/30 hover:text-text-primary transition-all duration-200"
+                >
+                  Browse Blog <ChevronRight size={14} />
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
