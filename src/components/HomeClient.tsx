@@ -124,9 +124,9 @@ export default function HomeClient({ recentPosts }: Props) {
             >
               Software Developer
               <span className="text-accent-cyan mx-2">/</span>
-              AI & RAG Systems
-              <span className="text-accent-cyan mx-2">/</span>
               Distributed Systems
+              <span className="text-accent-cyan mx-2">/</span>
+              AI & RAG
             </p>
 
             {/* Bio */}
@@ -134,8 +134,8 @@ export default function HomeClient({ recentPosts }: Props) {
               className="text-text-muted leading-relaxed max-w-xl mb-8 text-base lg:text-lg"
               style={{ animation: 'slide-up 0.6s ease-out 0.4s both' }}
             >
-              M.S. Computer Science @ Georgetown. Building production RAG-based AI agents,
-              event-driven microservices, and scalable distributed systems. Currently at
+              M.S. Computer Science @ Georgetown. Building event-driven microservices,
+              scalable distributed systems, and AI-powered tools. Currently at
               Madison-Davis, previously at Fiserv and Tencent.
             </p>
 
@@ -277,7 +277,7 @@ export default function HomeClient({ recentPosts }: Props) {
                 role: 'Software Developer',
                 period: 'Oct 2024 – Present',
                 location: 'New York, NY',
-                tags: ['Python', 'FastAPI', 'RAG', 'PGVector', 'Airflow', 'AWS'],
+                tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', 'Microservices'],
               },
               {
                 company: 'Fiserv',

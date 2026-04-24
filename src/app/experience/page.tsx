@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Briefcase, GraduationCap, Wrench, Code2 } from 'lucide-react';
+import { Briefcase, GraduationCap, Wrench, Code2, FolderGit2 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Experience | Zhicheng Zhong',
@@ -13,14 +13,11 @@ const experiences = [
     period: 'Oct 2024 – Present',
     location: 'New York, NY',
     highlights: [
-      'Built and productionized an internal RAG-based AI agent tool using Python and FastAPI, reducing average query resolution time by 60% and enabling scalable, low-latency knowledge retrieval for engineering teams.',
-      'Implemented and optimized hybrid retrieval (BM25 + vector search) on AWS PostgreSQL (PGVector), improving Recall@5 by 32% and MRR by 0.18, reducing hallucination in downstream generation.',
-      'Developed a query understanding module integrating multi-query expansion (MQE), query rewriting, and decomposition, improving complex and multi-hop query success rate by 28%.',
-      'Implemented Confluence ingestion with semantic chunking (20% overlap), increasing embedding relevance by 25%, reducing hallucination-prone retrieval by 30%, and expanding corpus coverage by 35%.',
-      'Developed an incremental corpus refresh workflow using Airflow and Query Deserves Freshness, reducing embedding compute cost by 70% while maintaining >99% data freshness.',
-      'Evaluated and iteratively improved RAG quality using RAGAS, achieving 92% faithfulness and 89% answer relevancy, increasing retrieval precision (+21%) and recall (+27%).',
+      'Led the refactoring of monolithic payment orchestration service into horizontally scalable event-driven microservices on OpenShift (Kubernetes) using Java and Spring Boot, enabling 3× peak traffic growth and eliminating peak-hour throughput bottlenecks.',
+      'Implemented Transactional Outbox with CDC (Debezium) pattern to decouple email receipt generation from the core payment workflow, publishing domain events to Kafka with at-least-once delivery and idempotent consumers, improving notification reliability to 99.9% while ensuring eventual consistency.',
+      'Built a fault-tolerant retry framework with exponential backoff and jitter to handle transient downstream failures, integrating Dead Letter Queue (DLQ) routing and replay capability, reducing long-tail notification failures by ~90%.',
     ],
-    tags: ['Python', 'FastAPI', 'RAG', 'PGVector', 'BM25', 'LangGraph', 'Airflow', 'AWS', 'RAGAS'],
+    tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'OpenShift', 'Debezium', 'CDC', 'Microservices'],
   },
   {
     company: 'Fiserv',
@@ -46,6 +43,20 @@ const experiences = [
   },
 ];
 
+const projects = [
+  {
+    name: 'Personal Portfolio AI Agent',
+    period: '2025',
+    highlights: [
+      'Built a full-stack AI agent for personal portfolio with a FastAPI (SSE streaming) backend and Next.js frontend, featuring RAG-powered Q&A, real-time Google Calendar scheduling, deployed on Railway + Vercel.',
+      'Designed a two-stage RAG ingestion pipeline using LangChain\'s Markdown header splitter followed by recursive character chunking (500 chars, 50 overlap), storing embeddings in ChromaDB with Google\'s embedding-001 model to enable semantic search over personal blog content.',
+      'Integrated Google Calendar API to enable real-time meeting scheduling through a conversational AI agent — queries Freebusy API to surface available time slots, then creates calendar events via a custom LangChain tool invoked within a multi-turn agentic loop.',
+    ],
+    tags: ['Python', 'FastAPI', 'Next.js', 'RAG', 'ChromaDB', 'LangChain', 'Gemini', 'Google Calendar API'],
+    link: '/agent',
+  },
+];
+
 const education = [
   {
     school: 'Georgetown University',
@@ -63,7 +74,7 @@ const education = [
 
 const skills: Record<string, string[]> = {
   'Languages': ['Python', 'Java', 'Go', 'JavaScript', 'SQL'],
-  'LLM & RAG': ['RAG (Retriever-Augmented Generation)', 'Vector Search (PGVector, FAISS)', 'Semantic Embeddings', 'Query Understanding (MQE, Rewriting)', 'Prompt Engineering', 'LangGraph', 'RAGAS'],
+  'LLM & Retrieval Systems': ['RAG (Retriever-Augmented Generation)', 'Vector Search (PGVector, FAISS)', 'Semantic Embeddings', 'Query Understanding (MQE, Rewriting, Decomposition)', 'Prompt Engineering', 'LangGraph', 'RAGAS'],
   'Backend & Distributed Systems': ['FastAPI', 'Spring Boot', 'RESTful APIs', 'Kafka', 'Event-Driven Architecture', 'Microservices', 'gRPC'],
   'Databases & Storage': ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'MS SQL Server'],
   'Cloud & DevOps': ['AWS (EC2, S3, RDS, IAM)', 'GCP', 'Docker', 'Kubernetes', 'Helm', 'CI/CD', 'Git'],
@@ -90,8 +101,8 @@ export default function ExperiencePage() {
             My <span className="gradient-text">Experience</span>
           </h1>
           <p className="text-text-muted text-lg max-w-xl">
-            Software developer specializing in AI/RAG systems, distributed microservices,
-            and scalable backend architecture.
+            Software developer specializing in distributed microservices, event-driven
+            systems, and AI/RAG-powered tools.
           </p>
         </div>
       </div>
@@ -144,6 +155,49 @@ export default function ExperiencePage() {
                       <span key={tag} className="tag-badge">{tag}</span>
                     ))}
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Projects ────────────────────────────────────────────────── */}
+        <section>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center">
+              <FolderGit2 size={16} className="text-accent-purple" />
+            </div>
+            <h2 className="text-xl font-bold text-text-primary">Projects</h2>
+          </div>
+
+          <div className="space-y-6">
+            {projects.map((proj, i) => (
+              <div key={i} className="glass-card p-6">
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+                  <div>
+                    <h3 className="font-bold text-text-primary text-lg leading-tight">{proj.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-text-muted font-mono bg-card-bg border border-card-border rounded-full px-3 py-1">{proj.period}</span>
+                    {proj.link && (
+                      <a href={proj.link} className="text-xs text-accent-purple font-mono hover:underline flex items-center gap-1">
+                        Live ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <ul className="space-y-2.5 mb-4">
+                  {proj.highlights.map((item, j) => (
+                    <li key={j} className="flex items-start gap-2.5 text-sm text-text-muted leading-relaxed">
+                      <span className="text-accent-purple mt-1 flex-shrink-0 text-xs">▸</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-2 pt-3 border-t border-card-border">
+                  {proj.tags.map((tag) => (
+                    <span key={tag} className="tag-badge">{tag}</span>
+                  ))}
                 </div>
               </div>
             ))}
