@@ -4,18 +4,28 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Menu, X, Bot } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
-const navLinks = [
+const navLinksEn = [
   { href: '/', label: 'Home' },
   { href: '/blog', label: 'Blog' },
   { href: '/experience', label: 'Experience' },
   { href: '/connect', label: 'Connect' },
 ];
 
+const navLinksZh = [
+  { href: '/', label: '首页' },
+  { href: '/blog', label: '博客' },
+  { href: '/experience', label: '经历' },
+  { href: '/connect', label: '联系' },
+];
+
 export default function Navigation() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { lang, toggle } = useLanguage();
+  const navLinks = lang === 'en' ? navLinksEn : navLinksZh;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -57,6 +67,12 @@ export default function Navigation() {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
+          <button
+            onClick={toggle}
+            className="px-3 py-1.5 text-xs font-mono font-semibold rounded-full border border-card-border text-text-muted hover:border-accent-cyan/40 hover:text-accent-cyan transition-all duration-200 tracking-widest"
+          >
+            {lang === 'en' ? '中文' : 'EN'}
+          </button>
           <Link
             href="/agent"
             className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-full border transition-all duration-200 ${
@@ -72,7 +88,7 @@ export default function Navigation() {
             href="/connect"
             className="px-4 py-1.5 text-sm font-medium rounded-full border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 hover:border-accent-cyan/60 transition-all duration-200"
           >
-            Get in Touch
+            {lang === 'en' ? 'Get in Touch' : '联系我'}
           </Link>
         </div>
 
@@ -113,6 +129,12 @@ export default function Navigation() {
             <Bot size={14} />
             AI Agent
           </Link>
+          <button
+            onClick={() => { toggle(); setMobileOpen(false); }}
+            className="text-sm font-mono font-semibold text-text-muted hover:text-accent-cyan transition-colors text-left"
+          >
+            {lang === 'en' ? '切换中文' : 'Switch to EN'}
+          </button>
         </div>
       )}
     </nav>

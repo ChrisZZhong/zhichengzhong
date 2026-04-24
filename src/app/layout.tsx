@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navigation from '@/components/Navigation';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 export const metadata: Metadata = {
   title: 'Zhicheng Zhong | Software Developer',
@@ -28,8 +29,10 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-space text-text-primary antialiased">
-        <Navigation />
-        <main>{children}</main>
+        <LanguageProvider>
+          <Navigation />
+          <main>{children}</main>
+        </LanguageProvider>
       </body>
     </html>
   );

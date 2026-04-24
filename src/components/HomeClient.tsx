@@ -3,15 +3,123 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Tag, Bot, Sparkles } from 'lucide-react';
+import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Bot, Sparkles } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Props {
   recentPosts: PostMeta[];
 }
 
+const translations = {
+  en: {
+    available: 'AVAILABLE FOR OPPORTUNITIES',
+    title1: 'Software Developer',
+    title2: 'Distributed Systems',
+    title3: 'AI & RAG',
+    bio: 'M.S. Computer Science @ Georgetown. Building event-driven microservices, scalable distributed systems, and AI-powered tools. Currently at Madison-Davis, previously at Fiserv and Tencent.',
+    readBlog: 'Read My Blog',
+    getInTouch: 'Get in Touch',
+    agentBadge: 'NEW — AI PORTFOLIO AGENT',
+    agentTitle: 'Chat with My AI Agent',
+    agentDesc: 'Powered by Gemini 2.5 Flash + RAG. Ask anything about my blog posts, explore my technical writing, or schedule a meeting — all through a streaming AI chat interface.',
+    tryAgent: 'Try the Agent',
+    browseBlog: 'Browse Blog',
+    fromBlog: 'FROM THE BLOG',
+    recentPosts: 'Recent Posts',
+    recentDesc: 'Notes on system design, distributed systems, and software engineering.',
+    viewAll: 'View All Posts',
+    career: 'CAREER',
+    experience: 'Experience',
+    expDesc: "A snapshot of where I've worked and what I've built.",
+    fullExp: 'Full Experience',
+    letsTalk: "LET'S TALK",
+    connect: 'Connect',
+    connectDesc: 'Open to new opportunities, collaborations, and conversations.',
+    allContact: 'All Contact Methods',
+    footer: 'Built with Next.js & ❤️',
+    deployed: 'Deployed on Vercel',
+    expEntries: [
+      {
+        company: 'Madison-Davis',
+        role: 'Software Developer',
+        period: 'Oct 2024 – Present',
+        location: 'New York, NY',
+        tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', 'Microservices'],
+      },
+      {
+        company: 'Fiserv',
+        role: 'Software Engineer',
+        period: 'Jul 2023 – Oct 2024',
+        location: 'Berkeley Heights, NJ',
+        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Kubernetes', 'Helm'],
+      },
+      {
+        company: 'Tencent',
+        role: 'Backend Developer Intern',
+        period: 'Jul 2020 – Oct 2020',
+        location: 'Shenzhen, China',
+        tags: ['Go', 'gRPC', 'Druid', 'AIOps'],
+      },
+    ],
+  },
+  zh: {
+    available: '正在寻找新机会',
+    title1: '软件工程师',
+    title2: '分布式系统',
+    title3: 'AI & RAG',
+    bio: '乔治城大学计算机科学硕士。专注于事件驱动微服务、分布式系统和 AI 工具的构建。目前就职于 Madison-Davis，曾任职于 Fiserv 和 Tencent。',
+    readBlog: '阅读博客',
+    getInTouch: '联系我',
+    agentBadge: '新功能 — AI 对话助手',
+    agentTitle: '与我的 AI 助手对话',
+    agentDesc: '基于 Gemini 2.5 Flash + RAG。询问博客内容、探索技术文章，或直接预约会议——通过流式 AI 对话界面一键完成。',
+    tryAgent: '试试 AI 助手',
+    browseBlog: '浏览博客',
+    fromBlog: '最新文章',
+    recentPosts: '近期博文',
+    recentDesc: '关于系统设计、分布式系统与软件工程的技术笔记。',
+    viewAll: '查看全部',
+    career: '工作经历',
+    experience: '经历',
+    expDesc: '我的工作历程与主要项目一览。',
+    fullExp: '查看完整经历',
+    letsTalk: '联系方式',
+    connect: '联系我',
+    connectDesc: '欢迎新机会、技术交流与合作洽谈。',
+    allContact: '所有联系方式',
+    footer: '基于 Next.js 构建 ❤️',
+    deployed: '部署于 Vercel',
+    expEntries: [
+      {
+        company: 'Madison-Davis',
+        role: '软件工程师',
+        period: '2024.10 – 至今',
+        location: '纽约',
+        tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', '微服务'],
+      },
+      {
+        company: 'Fiserv',
+        role: '软件工程师',
+        period: '2023.07 – 2024.10',
+        location: '新泽西州 Berkeley Heights',
+        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Kubernetes', 'Helm'],
+      },
+      {
+        company: 'Tencent',
+        role: '后端开发实习生',
+        period: '2020.07 – 2020.10',
+        location: '深圳',
+        tags: ['Go', 'gRPC', 'Druid', 'AIOps'],
+      },
+    ],
+  },
+};
+
 export default function HomeClient({ recentPosts }: Props) {
   const heroRef = useRef<HTMLDivElement>(null);
+  const { lang } = useLanguage();
+  const t = translations[lang];
 
   // Parallax on scroll
   useEffect(() => {
@@ -104,7 +212,7 @@ export default function HomeClient({ recentPosts }: Props) {
               style={{ animation: 'slide-up 0.6s ease-out 0.1s both' }}
             >
               <span className="w-1.5 h-1.5 bg-accent-cyan rounded-full animate-pulse" />
-              AVAILABLE FOR OPPORTUNITIES
+              {t.available}
             </div>
 
             {/* Name */}
@@ -112,9 +220,18 @@ export default function HomeClient({ recentPosts }: Props) {
               className="text-5xl lg:text-7xl font-black mb-4 leading-tight"
               style={{ animation: 'slide-up 0.6s ease-out 0.2s both' }}
             >
-              <span className="text-text-primary">Zhicheng</span>
-              <br />
-              <span className="gradient-text">Zhong</span>
+              {lang === 'en' ? (
+                <>
+                  <span className="text-text-primary">Zhicheng</span>
+                  <br />
+                  <span className="gradient-text">Zhong</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-text-primary">钟</span>
+                  <span className="gradient-text">志成</span>
+                </>
+              )}
             </h1>
 
             {/* Title */}
@@ -122,11 +239,11 @@ export default function HomeClient({ recentPosts }: Props) {
               className="text-xl lg:text-2xl text-text-muted font-medium mb-6"
               style={{ animation: 'slide-up 0.6s ease-out 0.3s both' }}
             >
-              Software Developer
+              {t.title1}
               <span className="text-accent-cyan mx-2">/</span>
-              Distributed Systems
+              {t.title2}
               <span className="text-accent-cyan mx-2">/</span>
-              AI & RAG
+              {t.title3}
             </p>
 
             {/* Bio */}
@@ -134,9 +251,7 @@ export default function HomeClient({ recentPosts }: Props) {
               className="text-text-muted leading-relaxed max-w-xl mb-8 text-base lg:text-lg"
               style={{ animation: 'slide-up 0.6s ease-out 0.4s both' }}
             >
-              M.S. Computer Science @ Georgetown. Building event-driven microservices,
-              scalable distributed systems, and AI-powered tools. Currently at
-              Madison-Davis, previously at Fiserv and Tencent.
+              {t.bio}
             </p>
 
             {/* Tech stack chips */}
@@ -163,13 +278,13 @@ export default function HomeClient({ recentPosts }: Props) {
                 href="/blog"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent-cyan/20 to-accent-purple/20 border border-accent-cyan/30 text-accent-cyan font-semibold text-sm hover:from-accent-cyan/30 hover:to-accent-purple/30 hover:border-accent-cyan/50 transition-all duration-200 glow-cyan"
               >
-                Read My Blog <ChevronRight size={16} />
+                {t.readBlog} <ChevronRight size={16} />
               </Link>
               <Link
                 href="/connect"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-card-border text-text-muted font-semibold text-sm hover:border-accent-purple/30 hover:text-text-primary transition-all duration-200"
               >
-                Get in Touch <ExternalLink size={14} />
+                {t.getInTouch} <ExternalLink size={14} />
               </Link>
             </div>
           </div>
@@ -205,15 +320,13 @@ export default function HomeClient({ recentPosts }: Props) {
             <div className="relative flex-1 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent-purple/30 bg-accent-purple/5 text-accent-purple text-xs font-mono font-medium mb-3 tracking-widest">
                 <Sparkles size={10} />
-                NEW — AI PORTFOLIO AGENT
+                {t.agentBadge}
               </div>
               <h2 className="text-2xl lg:text-3xl font-black text-text-primary mb-3">
-                Chat with My AI Agent
+                {t.agentTitle}
               </h2>
               <p className="text-text-muted text-sm leading-relaxed max-w-lg mb-6">
-                Powered by Gemini 2.5 Flash + RAG. Ask anything about my blog posts,
-                explore my technical writing, or schedule a meeting — all through a
-                streaming AI chat interface.
+                {t.agentDesc}
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <Link
@@ -221,13 +334,13 @@ export default function HomeClient({ recentPosts }: Props) {
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent-purple/20 to-accent-cyan/20 border border-accent-purple/40 text-accent-purple font-semibold text-sm hover:from-accent-purple/30 hover:to-accent-cyan/30 hover:border-accent-purple/60 transition-all duration-200"
                 >
                   <Bot size={15} />
-                  Try the Agent
+                  {t.tryAgent}
                 </Link>
                 <Link
                   href="/blog"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-card-border text-text-muted font-semibold text-sm hover:border-accent-cyan/30 hover:text-text-primary transition-all duration-200"
                 >
-                  Browse Blog <ChevronRight size={14} />
+                  {t.browseBlog} <ChevronRight size={14} />
                 </Link>
               </div>
             </div>
@@ -239,9 +352,9 @@ export default function HomeClient({ recentPosts }: Props) {
       <section className="py-24 px-6 relative" id="blog">
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            label="FROM THE BLOG"
-            title="Recent Posts"
-            subtitle="Notes on system design, distributed systems, and software engineering."
+            label={t.fromBlog}
+            title={t.recentPosts}
+            subtitle={t.recentDesc}
           />
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
@@ -255,7 +368,7 @@ export default function HomeClient({ recentPosts }: Props) {
               href="/blog"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-card-border text-text-muted text-sm font-medium hover:border-accent-cyan/30 hover:text-accent-cyan transition-all"
             >
-              View All Posts <ChevronRight size={16} />
+              {t.viewAll} <ChevronRight size={16} />
             </Link>
           </div>
         </div>
@@ -265,35 +378,13 @@ export default function HomeClient({ recentPosts }: Props) {
       <section className="py-24 px-6 relative" id="experience">
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            label="CAREER"
-            title="Experience"
-            subtitle="A snapshot of where I've worked and what I've built."
+            label={t.career}
+            title={t.experience}
+            subtitle={t.expDesc}
           />
 
           <div className="mt-12 grid md:grid-cols-2 gap-5">
-            {[
-              {
-                company: 'Madison-Davis',
-                role: 'Software Developer',
-                period: 'Oct 2024 – Present',
-                location: 'New York, NY',
-                tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', 'Microservices'],
-              },
-              {
-                company: 'Fiserv',
-                role: 'Software Engineer',
-                period: 'Jul 2023 – Oct 2024',
-                location: 'Berkeley Heights, NJ',
-                tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium'],
-              },
-              {
-                company: 'Tencent',
-                role: 'Backend Developer Intern',
-                period: 'Jul 2020 – Oct 2020',
-                location: 'Shenzhen, China',
-                tags: ['Go', 'gRPC', 'Druid', 'AIOps'],
-              },
-            ].map((exp) => (
+            {t.expEntries.map((exp) => (
               <div key={exp.company} className="glass-card p-6">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -317,7 +408,7 @@ export default function HomeClient({ recentPosts }: Props) {
               href="/experience"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-card-border text-text-muted text-sm font-medium hover:border-accent-cyan/30 hover:text-accent-cyan transition-all"
             >
-              Full Experience <ChevronRight size={16} />
+              {t.fullExp} <ChevronRight size={16} />
             </Link>
           </div>
         </div>
@@ -327,9 +418,9 @@ export default function HomeClient({ recentPosts }: Props) {
       <section className="py-24 px-6 relative" id="connect">
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            label="LET'S TALK"
-            title="Connect"
-            subtitle="Open to new opportunities, collaborations, and conversations."
+            label={t.letsTalk}
+            title={t.connect}
+            subtitle={t.connectDesc}
           />
 
           <div className="mt-12 flex flex-wrap justify-center gap-4">
@@ -361,7 +452,7 @@ export default function HomeClient({ recentPosts }: Props) {
               href="/connect"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-card-border text-text-muted text-sm font-medium hover:border-accent-cyan/30 hover:text-accent-cyan transition-all"
             >
-              All Contact Methods <ChevronRight size={16} />
+              {t.allContact} <ChevronRight size={16} />
             </Link>
           </div>
         </div>
@@ -371,10 +462,10 @@ export default function HomeClient({ recentPosts }: Props) {
       <footer className="py-12 px-6 border-t border-card-border">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-text-muted text-sm">
-            © {new Date().getFullYear()} Zhicheng Zhong. Built with Next.js & ❤️
+            © {new Date().getFullYear()} Zhicheng Zhong. {t.footer}
           </p>
           <p className="text-text-muted text-xs font-mono">
-            Deployed on Vercel
+            {t.deployed}
           </p>
         </div>
       </footer>
