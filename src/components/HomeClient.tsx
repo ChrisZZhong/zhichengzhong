@@ -106,7 +106,7 @@ const translations = {
         tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Kubernetes', 'Helm'],
       },
       {
-        company: 'Tencent',
+        company: '腾讯 Tencent',
         role: '后端开发实习生',
         period: '2020.07 – 2020.10',
         location: '深圳',
