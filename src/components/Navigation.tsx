@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Menu, X, Bot } from 'lucide-react';
+import { Menu, X, Bot, Moon, Sun } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
 
 const navLinksEn = [
   { href: '/', label: 'Home' },
@@ -25,6 +26,7 @@ export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { lang, toggle } = useLanguage();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navLinks = lang === 'en' ? navLinksEn : navLinksZh;
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function Navigation() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-space/90 backdrop-blur-md border-b border-card-border shadow-lg shadow-black/20'
+          ? 'nav-scrolled backdrop-blur-md border-b border-card-border shadow-lg shadow-black/20'
           : 'bg-transparent'
       }`}
     >
@@ -67,6 +69,13 @@ export default function Navigation() {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className="w-8 h-8 flex items-center justify-center rounded-full border border-card-border text-text-muted hover:border-accent-cyan/40 hover:text-accent-cyan transition-all duration-200"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
           <button
             onClick={toggle}
             className="px-3 py-1.5 text-xs font-mono font-semibold rounded-full border border-card-border text-text-muted hover:border-accent-cyan/40 hover:text-accent-cyan transition-all duration-200 tracking-widest"
@@ -104,7 +113,7 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-space/95 backdrop-blur-md border-b border-card-border px-6 py-4 flex flex-col gap-4">
+        <div className="md:hidden nav-scrolled backdrop-blur-md border-b border-card-border px-6 py-4 flex flex-col gap-4">
           {navLinks.map(({ href, label }) => (
             <Link
               key={href}
@@ -129,6 +138,15 @@ export default function Navigation() {
             <Bot size={14} />
             AI Agent
           </Link>
+          <button
+            onClick={() => { toggleTheme(); }}
+            className="flex items-center gap-2 text-sm font-medium text-text-muted hover:text-accent-cyan transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            {theme === 'dark'
+              ? (lang === 'en' ? 'Light Mode' : '浅色模式')
+              : (lang === 'en' ? 'Dark Mode' : '深色模式')}
+          </button>
           <button
             onClick={() => { toggle(); setMobileOpen(false); }}
             className="text-sm font-mono font-semibold text-text-muted hover:text-accent-cyan transition-colors text-left"

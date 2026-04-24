@@ -9,14 +9,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        'space': '#040411',
-        'card-bg': 'rgba(255, 255, 255, 0.03)',
-        'card-border': 'rgba(99, 102, 241, 0.15)',
+        // CSS-variable-backed: supports bg-space/90, text-text-primary/50, etc.
+        'space': ({ opacityValue }: { opacityValue?: string }) =>
+          opacityValue !== undefined
+            ? `rgba(var(--color-space-rgb), ${opacityValue})`
+            : `rgb(var(--color-space-rgb))`,
+        'text-primary': 'var(--color-text-primary)',
+        'text-muted': 'var(--color-text-muted)',
+        'card-bg': 'var(--color-card-bg)',
+        'card-border': 'var(--color-card-border)',
+        // Accent colors stay fixed
         'accent-cyan': '#22d3ee',
         'accent-purple': '#a855f7',
         'accent-blue': '#6366f1',
-        'text-primary': '#e2e8f0',
-        'text-muted': '#64748b',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
