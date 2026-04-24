@@ -9,11 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // CSS-variable-backed: supports bg-space/90, text-text-primary/50, etc.
-        'space': ({ opacityValue }: { opacityValue?: string }) =>
-          opacityValue !== undefined
-            ? `rgba(var(--color-space-rgb), ${opacityValue})`
-            : `rgb(var(--color-space-rgb))`,
+        'space': 'rgb(var(--color-space-rgb))',
         'text-primary': 'var(--color-text-primary)',
         'text-muted': 'var(--color-text-muted)',
         'card-bg': 'var(--color-card-bg)',
