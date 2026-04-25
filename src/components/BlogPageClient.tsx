@@ -4,6 +4,46 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
+import { useLanguage } from '@/context/LanguageContext';
+
+const tx = {
+  en: {
+    label: 'KNOWLEDGE BASE',
+    title: 'Blog',
+    titleGradient: 'Posts',
+    desc: 'Notes on distributed systems, system design, algorithms, and software engineering.',
+    stats: (posts: number, tags: number) => `${posts} posts across ${tags} categories`,
+    searchPlaceholder: 'Search posts...',
+    tagsLabel: 'Tags',
+    allPosts: 'All Posts',
+    showing: 'Showing',
+    post: 'post',
+    posts: 'posts',
+    in: 'in',
+    matching: 'matching',
+    clear: 'Clear ×',
+    noResults: 'No posts found.',
+    postCount: (n: number) => `${n} post${n !== 1 ? 's' : ''}`,
+  },
+  zh: {
+    label: '技术文章',
+    title: '博客',
+    titleGradient: '文章',
+    desc: '关于分布式系统、系统设计、算法与软件工程的技术笔记。',
+    stats: (posts: number, tags: number) => `共 ${posts} 篇文章，${tags} 个分类`,
+    searchPlaceholder: '搜索文章...',
+    tagsLabel: '分类',
+    allPosts: '全部文章',
+    showing: '显示',
+    post: '篇',
+    posts: '篇',
+    in: '分类：',
+    matching: '匹配：',
+    clear: '清除 ×',
+    noResults: '未找到相关文章。',
+    postCount: (n: number) => `${n} 篇`,
+  },
+};
 
 interface Props {
   posts: PostMeta[];
@@ -11,6 +51,8 @@ interface Props {
 }
 
 export default function BlogPageClient({ posts, tags }: Props) {
+  const { lang } = useLanguage();
+  const t = tx[lang];
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -72,16 +114,16 @@ export default function BlogPageClient({ posts, tags }: Props) {
         />
         <div className="max-w-6xl mx-auto relative">
           <p className="text-xs font-mono font-semibold text-accent-cyan tracking-[0.2em] mb-3 uppercase">
-            KNOWLEDGE BASE
+            {t.label}
           </p>
           <h1 className="text-4xl lg:text-5xl font-black text-text-primary mb-4">
-            Blog <span className="gradient-text">Posts</span>
+            {t.title} <span className="gradient-text">{t.titleGradient}</span>
           </h1>
           <p className="text-text-muted text-lg max-w-xl">
-            Notes on distributed systems, system design, algorithms, and software engineering.
+            {t.desc}
           </p>
           <p className="text-text-muted text-sm mt-2 font-mono">
-            {posts.length} posts across {tags.length} categories
+            {t.stats(posts.length, tags.length)}
           </p>
         </div>
       </div>
@@ -95,7 +137,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
               <input
                 type="text"
-                placeholder="Search posts..."
+                placeholder={t.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-card-bg border border-card-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-cyan/40 focus:bg-space transition-all font-mono"
@@ -106,7 +148,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
             <div className="glass-card p-4">
               <div className="flex items-center gap-2 text-text-muted text-xs font-semibold uppercase tracking-widest mb-4">
                 <Hash size={12} />
-                <span>Tags</span>
+                <span>{t.tagsLabel}</span>
               </div>
 
               <button
@@ -119,7 +161,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
               >
                 <span className="flex items-center gap-2">
                   <BookOpen size={13} />
-                  All Posts
+                  {t.allPosts}
                 </span>
                 <span className="text-xs font-mono opacity-60">{posts.length}</span>
               </button>
@@ -153,25 +195,25 @@ export default function BlogPageClient({ posts, tags }: Props) {
             {/* Active filter indicator */}
             {(activeTag || searchQuery) && (
               <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-card-bg border border-card-border text-sm">
-                <span className="text-text-muted">Showing</span>
+                <span className="text-text-muted">{t.showing}</span>
                 <span className="font-semibold text-accent-cyan">
-                  {filteredPosts.length} {filteredPosts.length === 1 ? 'post' : 'posts'}
+                  {filteredPosts.length} {filteredPosts.length === 1 ? t.post : t.posts}
                 </span>
                 {activeTag && (
                   <span className="flex items-center gap-1 text-text-muted">
-                    in <span className="tag-badge ml-1">{activeTag}</span>
+                    {t.in}<span className="tag-badge ml-1">{activeTag}</span>
                   </span>
                 )}
                 {searchQuery && (
                   <span className="text-text-muted">
-                    matching &ldquo;<span className="text-text-primary">{searchQuery}</span>&rdquo;
+                    {t.matching}&ldquo;<span className="text-text-primary">{searchQuery}</span>&rdquo;
                   </span>
                 )}
                 <button
                   onClick={() => { setActiveTag(null); setSearchQuery(''); }}
                   className="ml-auto text-xs text-text-muted hover:text-accent-cyan transition-colors"
                 >
-                  Clear ×
+                  {t.clear}
                 </button>
               </div>
             )}
@@ -182,7 +224,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
                 {filteredPosts.length === 0 ? (
                   <div className="text-center py-16 text-text-muted">
                     <BookOpen size={32} className="mx-auto mb-4 opacity-30" />
-                    <p>No posts found.</p>
+                    <p>{t.noResults}</p>
                   </div>
                 ) : (
                   filteredPosts.map((post) => <PostRow key={post.slug} post={post} />)
@@ -209,7 +251,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
                           </h2>
                         </button>
                         <span className="text-xs font-mono text-text-muted">
-                          {tagPosts.length} post{tagPosts.length !== 1 ? 's' : ''}
+                          {t.postCount(tagPosts.length)}
                         </span>
                         <div className="flex-1 h-px bg-card-border" />
                       </div>
