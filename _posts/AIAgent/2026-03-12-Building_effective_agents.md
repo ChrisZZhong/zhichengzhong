@@ -1,0 +1,115 @@
+---
+title: "Anthropic - Building effective agents"
+date: 2026-03-12
+description: "Anthropic - Building effective agents 解读"
+tag: AIAgent
+prime: false
+---
+
+# 简介
+
+在这篇文章中，我们将分享我们从与客户合作以及我们自己构建代理的过程中学到的经验，并为开发人员提供构建有效代理的实用建议
+
+## Agent VS Workflows
+
+two types of agentic systems:
+
+- Workflows are systems where LLMs and tools are orchestrated through predefined code paths.
+
+- Agents, on the other hand, are systems where LLMs dynamically direct their own processes and tool usage, maintaining control over how they accomplish tasks.
+
+## Building Block： 增强LLM
+
+The basic building block of agentic systems is an LLM enhanced with augmentations such as retrieval, tools, and memory.
+
+<img src='https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2Fd3083d3f40bb2b6f477901cc9a240738d3dd1371-2401x1000.png&w=3840&q=75'>
+
+开发中重点注意：
+
+1. 根据需求定制功能 （MCP，A2A）
+2. 确保为LLM提供简单易用且文档齐全的接口
+
+## 5种 workflow patterns 设计模式
+
+### 1）Prompt chaining 提示链
+
+提示链将任务分解为一系列步骤，其中每个 LLM 调用都会处理前一个调用的输出，其实就是 COT - chain of thought
+
+<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F7418719e3dab222dccb379b8879e1dc08ad34c78-2401x1000.png&w=3840&q=75'>
+
+何时使用此工作流程： 此工作流程非常适合任务可以轻松且清晰地分解为固定子任务的情况。其主要目标是通过简化每次 LLM 调用，以牺牲延迟为代价来换取更高的准确率。
+
+提示链的用途示例:
+- 先写出文档大纲，检查大纲是否符合特定标准，然后根据大纲撰写文档。
+- 撰写营销文案，然后将其翻译成另一种语言。
+
+### 2）Routing 路由
+
+路由机制对输入进行分类，并将其导向特定的后续任务。这种工作流程实现了关注点分离，并能构建更具针对性的提示。如果没有这种工作流程，针对一种输入进行优化可能会影响对其他输入的性能。
+
+<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F5c0c0e9fe4def0b584c04d37849941da55e5e71c-2401x1000.png&w=3840&q=75'>
+
+何时使用此工作流程： 路由适用于复杂的任务，这些任务有不同的类别，最好分开处理，并且可以通过 LLM 或更传统的分类模型/算法准确地处理分类。
+
+路由功能的应用示例：
+- 将不同类型的客户服务查询（一般问题、退款请求、技术支持）导向不同的下游流程、提示和工具。
+- (根据问题难度，使用不同模型回答) 将简单/常见的问题路由到 Claude Haiku 4.5 等较小、成本效益高的模型，将困难/不寻常的问题路由到 Claude Sonnet 4.5 等功能更强大的模型，以优化性能。
+
+### 3）Parallelization 并行
+
+多层级管理（LLM）有时可以同时处理同一任务，并通过程序自动汇总其输出。这种工作流程（即并行化）主要体现在两个方面：
+
+- Sectioning 分段 ：将一项任务分解成若干个可以并行运行的独立子任务。
+- Voting 投票： 多次运行同一任务以获得不同的输出结果。
+
+<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F406bb032ca007fd1624f261af717d70e6ca86286-2401x1000.png&w=3840&q=75'>
+
+何时使用此工作流程： 当拆分后的子任务可以并行处理以提高速度，或者需要从多个角度或多次尝试以获得更高置信度的结果时，并行化非常有效。对于涉及多个方面的复杂任务，如果每个方面都由单独的 LLM 调用来处理，则 LLM 通常表现更佳，这样可以集中精力关注每个特定方面。
+
+并行化的一些应用示例：
+- sectioning:
+    - 实施防护机制，其中一个模型实例处理用户查询，而另一个模型实例则负责筛选不当内容或请求。这种方法通常比让同一个 LLM 调用同时处理防护机制和核心响应性能更好。
+    - 自动评估 LLM 性能，其中每次 LLM 调用都会评估模型在给定提示下的性能的不同方面。
+- Voting:
+    - 对一段代码进行漏洞审查，其中多个不同的提示会审查代码，并在发现问题时标记代码。
+    - 评估给定内容是否不当，通过多个提示评估不同方面或要求不同的投票阈值来平衡误报和漏报。
+    
+### 4) Orchestrator-workers 协调器-工作器
+ 
+在协调器-工作者工作流程中，中央 LLM 动态地分解任务，将任务委派给工作者 LLM，并综合它们的结果。
+
+何时使用此工作流程： 此工作流程非常适合难以预测所需子任务的复杂任务（例如，在编码过程中，需要修改的文件数量以及每个文件的修改性质可能取决于具体任务）。虽然其拓扑结构与并行化类似，但关键区别在于其灵活性——子任务并非预先定义，而是由协调器根据具体输入确定。coding agent
+
+编排器工作线程的用途示例：
+
+- 每次都会对多个文件进行复杂更改的编码产品。
+- 搜索任务是指从多个来源收集和分析信息，以查找可能的相关信息。
+
+### 5）Evaluator-optimizer 评估器-优化器
+
+在评估器-优化器工作流程中，一个 LLM 调用生成响应，而另一个调用则提供评估和反馈，形成一个循环。
+
+何时使用此工作流程： 当评估标准明确，且迭代改进能够带来可衡量的价值时，此工作流程尤为有效。良好的匹配度体现在两个方面：首先，当人提出反馈意见时，LLM 的响应能够得到显著改进；其次，LLM 能够提供此类反馈。这类似于人类作家在撰写一篇精炼文章时所经历的迭代写作过程。
+
+- 文学翻译中存在一些译者（法学硕士）可能无法立即捕捉到的细微差别，但评估者（法学硕士）可以提供有用的批评意见。
+
+- 复杂的搜索任务，需要多轮搜索和分析才能收集到全面的信息，评估人员决定是否有必要进行进一步的搜索。
+
+## Agnets
+
+随着生命周期管理（LLM）的关键能力日趋成熟，智能体正逐渐应用于生产环境中。这些关键能力包括理解复杂输入、进行推理和规划、可靠地使用工具以及从错误中恢复。智能体的工作始于人类用户的指令或与其进行的交互式讨论。一旦任务明确，智能体便会独立进行规划和运行，并可能返回给人类用户以获取更多信息或判断。在执行过程中，智能体需要在每个步骤中从环境中获取“真实数据”（例如工具调用结果或代码执行情况），以评估其进度。智能体可以在检查点或遇到障碍时暂停，等待人类用户的反馈。任务通常会在完成后终止，但为了保持控制，通常也会设置停止条件（例如最大迭代次数）。
+
+智能体可以处理复杂的任务，但它们的实现通常很简单。它们通常只是基于环境反馈循环使用工具的逻辑逻辑模型（LLM）。因此，清晰周全地设计工具集及其文档至关重要。
+
+下图类似Re-act (reasoning - action loop)
+
+<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F58d9f10c985c4eb5d53798dea315f7bb5ab6249e-2401x1000.png&w=3840&q=75'>
+
+## 组合使用
+这些构建模块并非强制性的，而是开发者可以根据不同的使用场景进行调整和组合的通用模式。与任何生命周期管理 (LLM) 功能一样，成功的关键在于衡量性能并不断迭代改进。再次强调： 只有当增加复杂性能够显著提升结果时，才应该考虑增加复杂性。
+
+## 遵循三个核心原则：
+
+1. 保持代理程序设计的简洁性 。
+2. 通过明确展示代理的规划步骤来提高透明度 。
+3. 通过详尽的工具文档和测试 ，精心设计您的代理-计算机接口 (ACI)。
