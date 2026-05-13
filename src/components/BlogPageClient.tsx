@@ -290,7 +290,7 @@ function PostRow({ post }: { post: PostMeta }) {
         <span className="hidden sm:block tag-badge">{post.tag}</span>
         <span className="text-xs text-text-muted font-mono flex items-center gap-1">
           <Calendar size={10} />
-          {post.date.slice(0, 7)}
+          {post.date}
         </span>
         <ChevronRight
           size={14}

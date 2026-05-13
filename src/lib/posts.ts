@@ -15,6 +15,20 @@ function normalizeTag(raw: unknown): string {
     .trim() || 'Uncategorized';
 }
 
+/** Safely parse a date from frontmatter into "YYYY-MM-DD" string.
+ *  gray-matter auto-parses YAML dates as JS Date objects, so we
+ *  need to handle both Date and string. */
+function normalizeDate(raw: unknown): string {
+  if (!raw) return '2020-01-01';
+  if (raw instanceof Date) {
+    // toISOString() always gives "YYYY-MM-DDTHH:mm:ss.sssZ"
+    return raw.toISOString().slice(0, 10);
+  }
+  const s = String(raw).trim().slice(0, 10);
+  // validate basic YYYY-MM-DD shape
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '2020-01-01';
+}
+
 /**
  * Walk _posts/<TagFolder>/*.md and return every { slug, tag, filePath }.
  * slug = "<TagFolder>/<filename-without-.md>"
@@ -59,7 +73,7 @@ export function getAllPostsMeta(): PostMeta[] {
         return {
           slug,
           title: data.title || slug.split('/').pop() || slug,
-          date: data.date ? String(data.date).slice(0, 10) : '2020-01-01',
+          date: normalizeDate(data.date),
           description: data.description || '',
           // Use folder name as canonical tag (already normalized by OS folder name)
           tag,
@@ -81,7 +95,7 @@ export function getPostBySlug(slug: string): Post | null {
     return {
       slug,
       title: data.title || slug.split('/').pop() || slug,
-      date: data.date ? String(data.date).slice(0, 10) : '2020-01-01',
+      date: normalizeDate(data.date),
       description: data.description || '',
       tag,
       content,
