@@ -4,6 +4,7 @@ export interface PostMeta {
   date: string;
   description: string;
   tag: string;
+  pinned?: boolean;
 }
 
 export interface Post extends PostMeta {

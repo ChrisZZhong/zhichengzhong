@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Bot, Sparkles } from 'lucide-react';
+import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Bot, Sparkles, Pin } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -504,10 +504,15 @@ function PostCard({ post, index }: { post: PostMeta; index: number }) {
     >
       <div className="flex items-center justify-between">
         <span className="tag-badge">{post.tag}</span>
-        <span className="text-xs text-text-muted font-mono flex items-center gap-1">
-          <Calendar size={11} />
-          {post.date}
-        </span>
+        <div className="flex items-center gap-2">
+          {post.pinned && (
+            <Pin size={11} className="text-accent-cyan -rotate-45" />
+          )}
+          <span className="text-xs text-text-muted font-mono flex items-center gap-1">
+            <Calendar size={11} />
+            {post.date}
+          </span>
+        </div>
       </div>
       <h3 className="font-bold text-text-primary text-sm leading-snug group-hover:text-accent-cyan transition-colors line-clamp-2">
         {post.title}

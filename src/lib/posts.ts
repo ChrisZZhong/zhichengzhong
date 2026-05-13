@@ -75,8 +75,8 @@ export function getAllPostsMeta(): PostMeta[] {
           title: data.title || slug.split('/').pop() || slug,
           date: normalizeDate(data.date),
           description: data.description || '',
-          // Use folder name as canonical tag (already normalized by OS folder name)
           tag,
+          pinned: data.pinned === true,
         } as PostMeta;
       } catch {
         return null;

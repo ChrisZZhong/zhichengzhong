@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash } from 'lucide-react';
+import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash, Pin } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -24,6 +24,8 @@ const tx = {
     clear: 'Clear ×',
     noResults: 'No posts found.',
     postCount: (n: number) => `${n} post${n !== 1 ? 's' : ''}`,
+    pinnedLabel: 'PINNED',
+    pinnedTitle: 'Pinned Posts',
   },
   zh: {
     label: '技术文章',
@@ -42,6 +44,8 @@ const tx = {
     clear: '清除 ×',
     noResults: '未找到相关文章。',
     postCount: (n: number) => `${n} 篇`,
+    pinnedLabel: '置顶',
+    pinnedTitle: '置顶文章',
   },
 };
 
@@ -75,21 +79,31 @@ export default function BlogPageClient({ posts, tags }: Props) {
       );
     }
 
-    // Sort alphabetically by title
-    return [...result].sort((a, b) => a.title.localeCompare(b.title));
+    // Pinned first, then by date desc
+    return [...result].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return b.date.localeCompare(a.date);
+    });
   }, [posts, activeTag, searchQuery]);
 
   // Group filtered posts by tag for the grouped view
   const groupedPosts = useMemo(() => {
     if (activeTag || searchQuery.trim()) return null; // flat view when filtered
     const groups: Record<string, PostMeta[]> = {};
-    const sorted = [...posts].sort((a, b) => a.title.localeCompare(b.title));
+    const sorted = [...posts].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return b.date.localeCompare(a.date);
+    });
     for (const post of sorted) {
       if (!groups[post.tag]) groups[post.tag] = [];
       groups[post.tag].push(post);
     }
     return groups;
   }, [posts, activeTag, searchQuery]);
+
+  const pinnedPosts = useMemo(() => posts.filter((p) => p.pinned), [posts]);
 
   // Count per tag
   const tagCounts = useMemo(() => {
@@ -129,6 +143,51 @@ export default function BlogPageClient({ posts, tags }: Props) {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 mt-8">
+
+        {/* ── Pinned Posts ─────────────────────────────────────────── */}
+        {pinnedPosts.length > 0 && !activeTag && !searchQuery.trim() && (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-accent-cyan/30 bg-accent-cyan/5">
+                <Pin size={12} className="text-accent-cyan -rotate-45" />
+                <span className="text-xs font-mono font-semibold text-accent-cyan tracking-widest uppercase">
+                  {t.pinnedLabel}
+                </span>
+              </div>
+              <div className="flex-1 h-px bg-card-border" />
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pinnedPosts.map((post) => (
+                <Link
+                  key={post.slug}
+                  href={`/blog/${post.slug}`}
+                  className="glass-card border-accent-cyan/20 p-5 flex flex-col gap-3 group relative overflow-hidden"
+                >
+                  {/* subtle glow */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent-cyan/5 to-transparent pointer-events-none rounded-xl" />
+                  <div className="flex items-center justify-between relative">
+                    <span className="tag-badge">{post.tag}</span>
+                    <Pin size={13} className="text-accent-cyan -rotate-45 opacity-70" />
+                  </div>
+                  <h3 className="font-bold text-text-primary text-sm leading-snug group-hover:text-accent-cyan transition-colors line-clamp-2 relative">
+                    {post.title}
+                  </h3>
+                  {post.description && post.description !== post.title && (
+                    <p className="text-xs text-text-muted line-clamp-2 relative">{post.description}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-auto relative">
+                    <span className="text-xs text-text-muted font-mono flex items-center gap-1">
+                      <Calendar size={10} />
+                      {post.date}
+                    </span>
+                    <ChevronRight size={13} className="text-text-muted opacity-0 group-hover:opacity-100 group-hover:text-accent-cyan transition-all" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* ── Sidebar ──────────────────────────────────────────── */}
           <aside className="lg:w-64 flex-shrink-0">
@@ -276,12 +335,19 @@ function PostRow({ post }: { post: PostMeta }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="flex items-center gap-4 p-4 rounded-xl glass-card group"
+      className={`flex items-center gap-4 p-4 rounded-xl glass-card group ${
+        post.pinned ? 'border-accent-cyan/25' : ''
+      }`}
     >
       <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-cyan transition-colors truncate">
-          {post.title}
-        </h3>
+        <div className="flex items-center gap-1.5">
+          {post.pinned && (
+            <Pin size={11} className="text-accent-cyan flex-shrink-0 -rotate-45" />
+          )}
+          <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-cyan transition-colors truncate">
+            {post.title}
+          </h3>
+        </div>
         {post.description && post.description !== post.title && (
           <p className="text-xs text-text-muted mt-0.5 truncate">{post.description}</p>
         )}
