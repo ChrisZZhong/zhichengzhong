@@ -14,8 +14,45 @@ interface Props {
   content: string;
 }
 
+/** Convert heading text to a URL-safe id (same logic as server-side extractHeadings) */
+function slugify(text: string): string {
+  return String(text)
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w一-鿿-]/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** Extract plain text from ReactMarkdown children */
+function extractText(children: React.ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children)) return children.map(extractText).join('');
+  if (children && typeof children === 'object' && 'props' in (children as object)) {
+    return extractText((children as { props: { children: React.ReactNode } }).props.children);
+  }
+  return '';
+}
+
 export default function BlogPostContent({ content }: Props) {
   const components: Components = {
+    // Headings with auto-generated ids for TOC anchor links
+    h1({ children }) {
+      const id = slugify(extractText(children));
+      return <h1 id={id}>{children}</h1>;
+    },
+    h2({ children }) {
+      const id = slugify(extractText(children));
+      return <h2 id={id}>{children}</h2>;
+    },
+    h3({ children }) {
+      const id = slugify(extractText(children));
+      return <h3 id={id}>{children}</h3>;
+    },
+    h4({ children }) {
+      const id = slugify(extractText(children));
+      return <h4 id={id}>{children}</h4>;
+    },
     code(props) {
       const { children, className } = props;
       const match = /language-(\w+)/.exec(className || '');
