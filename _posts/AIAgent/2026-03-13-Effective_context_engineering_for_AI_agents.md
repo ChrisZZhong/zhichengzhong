@@ -21,7 +21,7 @@ pinned: true
 
 提示工程的主要重点在于如何编写有效的提示，尤其是系统提示。然而，随着我们朝着构建功能更强大的智能体方向发展，这些智能体需要在多轮推理和更长的时间跨度内运行，我们需要**管理整个上下文状态（系统指令、工具、 模型上下文协议 （MCP）、外部数据、消息历史记录等）的策略。**
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2Ffaa261102e46c7f090a2402a49000ffae18c5dd6-2292x1290.png&w=3840&q=75'>
+<img src = '/media/AIAgent/faa261102e46c7f090a2402a49000ffae18c5dd6-2292x1290.png'>
 
 尽管语言学习模型（LLM）速度很快，而且能够处理越来越大的数据量，但我们观察到，它们和人类一样，在某个阶段也会失去焦点或感到困惑。对“大海捞针”式基准测试的研究揭示了 **context rot** “上下文腐烂” 的概念：随着上下文窗口中词元数量的增加，模型准确回忆上下文信息的能力会下降。
 
@@ -39,7 +39,7 @@ pinned: true
 
 最佳的理解程度应达到平衡：既要足够具体以有效引导行为，又要足够灵活以提供强大的启发式方法来指导模型的行为。
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F0442fe138158e84ffce92bed1624dd09f37ac46f-2292x1288.png&w=3840&q=75'>
+<img src = '/media/AIAgent/0442fe138158e84ffce92bed1624dd09f37ac46f-2292x1288.png'>
 
 我们建议将提示信息组织成不同的部分（例如 <background_information> 、 instructions 、 ## Tool guidance 、 ## Output description 等），并使用 XML 标记或 Markdown 标题等技术来区分这些部分，尽管随着模型功能的增强，提示信息的确切格式可能变得不那么重要了。
 

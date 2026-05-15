@@ -23,7 +23,7 @@ two types of agentic systems:
 
 The basic building block of agentic systems is an LLM enhanced with augmentations such as retrieval, tools, and memory.
 
-<img src='https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2Fd3083d3f40bb2b6f477901cc9a240738d3dd1371-2401x1000.png&w=3840&q=75'>
+<img src='/media/AIAgent/d3083d3f40bb2b6f477901cc9a240738d3dd1371-2401x1000.png'>
 
 开发中重点注意：
 
@@ -36,7 +36,7 @@ The basic building block of agentic systems is an LLM enhanced with augmentation
 
 提示链将任务分解为一系列步骤，其中每个 LLM 调用都会处理前一个调用的输出，其实就是 COT - chain of thought
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F7418719e3dab222dccb379b8879e1dc08ad34c78-2401x1000.png&w=3840&q=75'>
+<img src = '/media/AIAgent/7418719e3dab222dccb379b8879e1dc08ad34c78-2401x1000.png'>
 
 何时使用此工作流程： 此工作流程非常适合任务可以轻松且清晰地分解为固定子任务的情况。其主要目标是通过简化每次 LLM 调用，以牺牲延迟为代价来换取更高的准确率。
 
@@ -48,7 +48,7 @@ The basic building block of agentic systems is an LLM enhanced with augmentation
 
 路由机制对输入进行分类，并将其导向特定的后续任务。这种工作流程实现了关注点分离，并能构建更具针对性的提示。如果没有这种工作流程，针对一种输入进行优化可能会影响对其他输入的性能。
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F5c0c0e9fe4def0b584c04d37849941da55e5e71c-2401x1000.png&w=3840&q=75'>
+<img src = '/media/AIAgent/5c0c0e9fe4def0b584c04d37849941da55e5e71c-2401x1000.png'>
 
 何时使用此工作流程： 路由适用于复杂的任务，这些任务有不同的类别，最好分开处理，并且可以通过 LLM 或更传统的分类模型/算法准确地处理分类。
 
@@ -63,7 +63,7 @@ The basic building block of agentic systems is an LLM enhanced with augmentation
 - Sectioning 分段 ：将一项任务分解成若干个可以并行运行的独立子任务。
 - Voting 投票： 多次运行同一任务以获得不同的输出结果。
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F406bb032ca007fd1624f261af717d70e6ca86286-2401x1000.png&w=3840&q=75'>
+<img src = '/media/AIAgent/406bb032ca007fd1624f261af717d70e6ca86286-2401x1000.png'>
 
 何时使用此工作流程： 当拆分后的子任务可以并行处理以提高速度，或者需要从多个角度或多次尝试以获得更高置信度的结果时，并行化非常有效。对于涉及多个方面的复杂任务，如果每个方面都由单独的 LLM 调用来处理，则 LLM 通常表现更佳，这样可以集中精力关注每个特定方面。
 
@@ -104,7 +104,7 @@ The basic building block of agentic systems is an LLM enhanced with augmentation
 
 下图类似Re-act (reasoning - action loop)
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F58d9f10c985c4eb5d53798dea315f7bb5ab6249e-2401x1000.png&w=3840&q=75'>
+<img src = '/media/AIAgent/58d9f10c985c4eb5d53798dea315f7bb5ab6249e-2401x1000.png'>
 
 ## 组合使用
 这些构建模块并非强制性的，而是开发者可以根据不同的使用场景进行调整和组合的通用模式。与任何生命周期管理 (LLM) 功能一样，成功的关键在于衡量性能并不断迭代改进。再次强调： 只有当增加复杂性能够显著提升结果时，才应该考虑增加复杂性。

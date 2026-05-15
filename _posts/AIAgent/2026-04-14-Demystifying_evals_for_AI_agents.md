@@ -21,7 +21,7 @@ pinned: true
 
 evaluation （简称“评估”）是对人工智能系统的一种测试：给人工智能系统输入数据，然后应用评分逻辑对其输出进行评估，以衡量其成功程度。本文重点介绍无需真实用户参与即可在开发过程中运行的自动化评估 
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2Fbd42e7b2f3e9bb5218142796d3ede4816588dec0-4584x2834.png&w=3840&q=75'>
+<img src = '/media/AIAgent/bd42e7b2f3e9bb5218142796d3ede4816588dec0-4584x2834.png'>
 
 - **Single-turn evaluations** 单轮评估简单明了：一个提示、一个回答和评分逻辑。
 
@@ -33,7 +33,7 @@ evaluation （简称“评估”）是对人工智能系统的一种测试：给
 
 在构建智能体评估模型时，我们使用以下定义：
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F0205b36f9639fc27f2f6566f73cb56b06f59d555-4584x2580.png&w=3840&q=75'>
+<img src = '/media/AIAgent/0205b36f9639fc27f2f6566f73cb56b06f59d555-4584x2580.png'>
 
 1. 任务 `task` （又称问题 `problem`或测试用例 `test case` ）是指具有明确输入和成功标准的单个测试。
 
@@ -269,7 +269,7 @@ tracked_metrics:
 
 `pass^k` 衡量的是所有 k 次试验都成功的概率。随着 k 的增加，pass^k 会下降，因为要求在更多试验中保持一致性难度更大。如果你的智能体每次试验的成功率为 75%，并且你进行了 3 次试验，那么三次试验全部成功的概率为 (0.75)³ ≈ 42%。对于面向用户的智能体而言，这个指标尤为重要，因为用户期望每次都能获得可靠的服务。
 
-<img src='https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F3ddac5be07a0773922ec9df06afec55922f8194a-4584x2580.png&w=3840&q=75'>
+<img src='/media/AIAgent/3ddac5be07a0773922ec9df06afec55922f8194a-4584x2580.png'>
 
 随着试验次数的增加，pass@k 和 pass^k 的值逐渐趋于一致。当 k=1 时，二者完全相同（均代表每次试验的成功率）。但到了 k=10 时，二者的趋势则截然相反：pass@k 接近 100%，而 pass^k 则降至 0%。
 
@@ -281,7 +281,7 @@ tracked_metrics:
 
 我们发现，一些团队因为认为需要数百个任务而推迟构建评估模型。实际上，从真实失败案例中提取 20-50 个简单的任务就是一个很好的开始。毕竟，在智能体开发的早期阶段，对系统的每一次更改通常都会产生清晰可见的影响，而这种较大的影响意味着较小的样本量就足够了。更成熟的智能体可能需要更大、更复杂的评估来检测较小的影响，但在初期最好采用 80/20 法则。评估模型构建的难度会随着等待时间的延长而增加。在早期阶段，产品需求自然而然地转化为测试用例。如果等待时间过长，你就只能从运行中的系统中逆向推导成功标准了。
 
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F0db40cc0e14402222a179fc6297b9c8818e97c8a-4584x2580.png&w=3840&q=75'>
+<img src = '/media/AIAgent/0db40cc0e14402222a179fc6297b9c8818e97c8a-4584x2580.png'>
 
 ## 第一步：从你已经手动测试过的内容开始
 
@@ -378,7 +378,7 @@ tracked_metrics:
 
 
 就像安全工程中的瑞士奶酪模型一样，没有哪一层评估方法能够发现所有问题。通过结合多种方法，漏掉一层的故障会被另一层发现。
-<img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2Fb77b8dbb7c2e57f063fbc8a087a853d5809b74b0-4584x2580.png&w=3840&q=75'>
+<img src = '/media/AIAgent/b77b8dbb7c2e57f063fbc8a087a853d5809b74b0-4584x2580.png'>
 
 最有效的团队会将这些方法结合起来：自动化评估以实现快速迭代，生产监控以获取真实数据，以及定期人工审查以实现校准。
 
