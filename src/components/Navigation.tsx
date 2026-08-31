@@ -11,6 +11,7 @@ const navLinksEn = [
   { href: '/', label: 'Home' },
   { href: '/blog', label: 'Blog' },
   { href: '/experience', label: 'Experience' },
+  { href: '/resume', label: 'Resume' },
   { href: '/connect', label: 'Connect' },
 ];
 
@@ -18,6 +19,7 @@ const navLinksZh = [
   { href: '/', label: '首页' },
   { href: '/blog', label: '博客' },
   { href: '/experience', label: '经历' },
+  { href: '/resume', label: '简历' },
   { href: '/connect', label: '联系' },
 ];
 
