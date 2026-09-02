@@ -906,8 +906,10 @@ body {
   html,
   body {
     width: 8.5in;
-    min-height: 11in;
+    height: 11in;
+    min-height: 0 !important;
     background: #fff !important;
+    overflow: hidden !important;
   }
   nav,
   .resume-builder-header,
@@ -925,6 +927,7 @@ body {
     width: 8.5in !important;
     min-width: 8.5in !important;
     height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
@@ -935,12 +938,16 @@ body {
   }
   .resume-builder {
     padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 0 !important;
   }
   .resume-builder .max-w-7xl {
     display: block !important;
     max-width: none !important;
     width: 8.5in !important;
     padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
   }
   .resume-workspace-grid {
     display: block !important;
@@ -961,9 +968,15 @@ body {
     width: 8.5in !important;
     height: 11in !important;
     margin: 0 !important;
-    padding: 0.42in 0.5in 0.34in !important;
+    padding: 0.38in 0.25in 0.5in !important;
     box-shadow: none !important;
     overflow: hidden !important;
+    break-after: avoid !important;
+    break-before: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
