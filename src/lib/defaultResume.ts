@@ -20,7 +20,7 @@ export const defaultResume: ResumeData = {
         'Drove the migration of monolithic payment orchestration services into horizontally scalable microservices using **Java**, **Spring Boot**, **Cassandra**, **Oracle DB**, and OpenShift (**Kubernetes**), enabling 3x peak traffic growth and eliminating peak-hour throughput bottlenecks.',
         'Implemented **Transactional Outbox + CDC** (Debezium) to decouple receipt generation from payment processing, publishing domain events to **Kafka** with at-least-once delivery and idempotent consumers, achieving over 99% successful notification delivery.',
         'Built fault-tolerant retry, exponential backoff with jitter, DLQ routing, and replay mechanisms for distributed payment workflows, reducing long-tail notification failures by ~90%.',
-        'Owned CAT and production support across infrastructure, QA, and application teams, debugging payment processing issues and improving **system reliability** across multiple deployment environments.',
+        'Partnered with infrastructure, QA, and application teams to support CAT & production releases, troubleshoot payment processing issues, and ensure high service availability across multiple deployment environments.',
       ],
     },
     {
