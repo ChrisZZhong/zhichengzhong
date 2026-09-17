@@ -21,8 +21,8 @@ const translations = {
         location: 'New York, NY',
         highlights: [
           'Drove the migration of monolithic payment orchestration services into horizontally scalable microservices on OpenShift (Kubernetes) using Java and Spring Boot, enabling 3× peak traffic growth and eliminating peak-hour throughput bottlenecks.',
-          'Implemented Transactional Outbox with CDC (Debezium) pattern to decouple email receipt generation from the core payment workflow, publishing domain events to Kafka with at-least-once delivery and idempotent consumers, achieving over 99% successful notification delivery.',
-          'Developed a fault-tolerant retry mechanism with exponential backoff and jitter, along with Dead Letter Queue (DLQ) routing and replay capabilities, reducing long-tail notification failures by ~90%.',
+          'Implemented Transactional Outbox with CDC (Debezium) to decouple email receipt generation from the core payment workflow, eliminating database-Kafka dual-write inconsistency and enabling reliable at-least-once event publication with idempotent consumers.',
+          'Built resilient Kafka consumer failure handling with exponential backoff, jitter, circuit breaking, and DLQ routing, preventing retry storms during downstream email-provider outages and reducing long-tail notification failures by ~90%.',
           'Partnered with infrastructure, QA, and application teams to support CAT & production releases, troubleshoot payment processing issues, and ensure high service availability across multiple deployment environments.',
         ],
         tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'OpenShift', 'Debezium', 'DLQ', 'Microservices'],
@@ -34,10 +34,9 @@ const translations = {
         location: 'Berkeley Heights, NJ',
         highlights: [
           'Developed a Redis cache-aside layer in Java (JavaEE) to offload database reads for client configurations and improve API latency, cutting average API latency by over 50% and restoring SLA compliance.',
-          'Built a message-count-based Kafka reconciliation service to validate customer configuration propagation from Kafka to Redis across time windows, detect persistent mismatches, and trigger re-runs to restore consistency in production.',
-          'Implemented a high-throughput Kafka consumer group with batch processing (100 msgs/batch) to ingest customer configuration updates into Redis, sustaining ~10k msgs/sec under production load.',
+          'Implemented a high-throughput Kafka consumer group with batch processing (100 msgs/batch) to ingest customer configuration updates into Redis, sustaining ~100k msgs/sec under production load.',
         ],
-        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Reconciliation', 'Batch Processing'],
+        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Batch Processing', '100k msgs/sec'],
       },
       {
         company: 'Tencent',
@@ -91,8 +90,8 @@ const translations = {
         location: '纽约',
         highlights: [
           '推动将单体支付编排服务迁移为基于 OpenShift (Kubernetes) 的横向可扩展微服务，使用 Java 和 Spring Boot，支撑 3 倍峰值流量增长并消除高峰时段吞吐瓶颈。',
-          '实现 Transactional Outbox 与 CDC (Debezium) 模式，将邮件收据生成与核心支付流程解耦，通过 Kafka 以至少一次投递语义发布领域事件，并配合幂等消费者，实现超过 99% 的通知成功投递率。',
-          '开发具备指数退避与抖动的容错重试机制，并结合 Dead Letter Queue (DLQ) 路由与重放能力，将长尾通知失败率降低约 90%。',
+          '实现 Transactional Outbox 与 CDC (Debezium)，将邮件收据生成与核心支付流程解耦，消除数据库与 Kafka 双写不一致，并通过幂等消费者实现可靠的至少一次事件发布。',
+          '构建韧性 Kafka 消费者异常处理机制，集成指数退避、抖动、断路器和 DLQ 路由，防止下游邮件服务商故障期间出现重试风暴，并将长尾通知失败率降低约 90%。',
           '与基础设施、QA 和应用团队协作支持 CAT 与生产发布，排查支付处理问题，并保障多个部署环境下的高服务可用性。',
         ],
         tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'OpenShift', 'Debezium', 'DLQ', '微服务'],
@@ -104,10 +103,9 @@ const translations = {
         location: '新泽西州 Berkeley Heights',
         highlights: [
           '使用 Java (JavaEE) 开发 Redis cache-aside 缓存层，降低客户配置查询对数据库的读压力并改善 API 延迟，将平均 API 延迟降低超过 50%，恢复 SLA 合规。',
-          '构建基于消息计数的 Kafka 对账服务，按时间窗口校验客户配置从 Kafka 到 Redis 的传播结果，检测持续性不一致并触发重跑，以恢复生产环境一致性。',
-          '实现高吞吐 Kafka 消费者组，采用批处理模式（100 条/批）将客户配置更新写入 Redis，在生产负载下稳定支撑约 10k 条/秒的消息处理速率。',
+          '实现高吞吐 Kafka 消费者组，采用批处理模式（100 条/批）将客户配置更新写入 Redis，在生产负载下稳定支撑约 100k 条/秒的消息处理速率。',
         ],
-        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', '对账服务', '批处理'],
+        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', '批处理', '100k 条/秒'],
       },
       {
         company: '腾讯 Tencent',

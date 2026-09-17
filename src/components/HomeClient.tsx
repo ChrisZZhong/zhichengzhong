@@ -45,14 +45,14 @@ const translations = {
         role: 'Software Developer',
         period: 'Oct 2024 – Present',
         location: 'New York, NY',
-        tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', 'Microservices'],
+        tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', 'Circuit Breaker'],
       },
       {
         company: 'Fiserv',
         role: 'Software Engineer',
         period: 'Jul 2023 – Oct 2024',
         location: 'Berkeley Heights, NJ',
-        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Kubernetes', 'Helm'],
+        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Batch Processing', '100k msgs/sec'],
       },
       {
         company: 'Tencent',
@@ -96,14 +96,14 @@ const translations = {
         role: '软件工程师',
         period: '2024.10 – 至今',
         location: '纽约',
-        tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', '微服务'],
+        tags: ['Java', 'Spring Boot', 'Kafka', 'Kubernetes', 'Debezium', '断路器'],
       },
       {
         company: 'Fiserv',
         role: '软件工程师',
         period: '2023.07 – 2024.10',
         location: '新泽西州 Berkeley Heights',
-        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', 'Kubernetes', 'Helm'],
+        tags: ['Java', 'JavaEE', 'Redis', 'Kafka', '批处理', '100k 条/秒'],
       },
       {
         company: '腾讯 Tencent',
