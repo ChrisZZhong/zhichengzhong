@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { getPostHref } from '@/lib/post-url';
 import { getAllPostSlugs, getPostBySlug, getAllPostsMeta } from '@/lib/posts';
 import BlogPostContent from '@/components/BlogPostContent';
 import TableOfContents from '@/components/TableOfContents';
@@ -12,7 +13,9 @@ interface Props {
 }
 
 function paramsToSlug(parts: string[]): string {
-  return parts.join('/');
+  // Next.js 14 encodes dynamic params, including '&' in Java&Spring.
+  // Decode each segment once before looking up the Markdown file.
+  return parts.map((part) => decodeURIComponent(part)).join('/');
 }
 
 /** Same slugify logic as the client-side one in BlogPostContent */
@@ -140,7 +143,7 @@ export default function BlogPostPage({ params }: Props) {
             {(prevPost || nextPost) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {prevPost ? (
-                  <Link href={`/blog/${prevPost.slug}`} className="glass-card p-4 group">
+                  <Link href={getPostHref(prevPost.slug)} className="glass-card p-4 group">
                     <p className="text-xs text-text-muted mb-1">← Previous</p>
                     <p className="text-sm font-semibold text-text-primary group-hover:text-accent-cyan transition-colors line-clamp-2">
                       {prevPost.title}
@@ -148,7 +151,7 @@ export default function BlogPostPage({ params }: Props) {
                   </Link>
                 ) : <div />}
                 {nextPost && (
-                  <Link href={`/blog/${nextPost.slug}`} className="glass-card p-4 text-right group">
+                  <Link href={getPostHref(nextPost.slug)} className="glass-card p-4 text-right group">
                     <p className="text-xs text-text-muted mb-1">Next →</p>
                     <p className="text-sm font-semibold text-text-primary group-hover:text-accent-cyan transition-colors line-clamp-2">
                       {nextPost.title}

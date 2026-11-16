@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getPostHref } from '@/lib/post-url';
 import { ArrowDown, Github, Linkedin, Mail, ExternalLink, ChevronRight, Calendar, Bot, Sparkles, Pin } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 import { useLanguage } from '@/context/LanguageContext';
@@ -498,7 +499,7 @@ function SectionHeader({
 function PostCard({ post, index }: { post: PostMeta; index: number }) {
   return (
     <Link
-      href={`/blog/${post.slug}`}
+      href={getPostHref(post.slug)}
       className="glass-card p-5 flex flex-col gap-3 group"
       style={{ animationDelay: `${index * 80}ms` }}
     >

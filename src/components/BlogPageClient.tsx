@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { getPostHref } from '@/lib/post-url';
 import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash, Pin } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 import { useLanguage } from '@/context/LanguageContext';
@@ -160,7 +161,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
               {pinnedPosts.map((post) => (
                 <Link
                   key={post.slug}
-                  href={`/blog/${post.slug}`}
+                  href={getPostHref(post.slug)}
                   className="glass-card border-accent-cyan/20 p-5 flex flex-col gap-3 group relative overflow-hidden"
                 >
                   {/* subtle glow */}
@@ -334,7 +335,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
 function PostRow({ post }: { post: PostMeta }) {
   return (
     <Link
-      href={`/blog/${post.slug}`}
+      href={getPostHref(post.slug)}
       className={`flex items-center gap-4 p-4 rounded-xl glass-card group ${
         post.pinned ? 'border-accent-cyan/25' : ''
       }`}
