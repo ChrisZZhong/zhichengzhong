@@ -1,15 +1,15 @@
 ---
 title: "Anthropic - Building effective agents"
 date: 2026-03-12
-description: "Anthropic - Building effective agents 解读"
+description: "Notes on Anthropic - Building effective agents"
 tag: AIAgent
 prime: false
 pinned: true
 ---
 
-# 简介
+# Introduction
 
-在这篇文章中，我们将分享我们从与客户合作以及我们自己构建代理的过程中学到的经验，并为开发人员提供构建有效代理的实用建议
+This article shares lessons from working with customers and building agents ourselves, along with practical advice for developers building effective agents.
 
 ## Agent VS Workflows
 
@@ -19,98 +19,98 @@ two types of agentic systems:
 
 - Agents, on the other hand, are systems where LLMs dynamically direct their own processes and tool usage, maintaining control over how they accomplish tasks.
 
-## Building Block： 增强LLM
+## Building block: the augmented LLM
 
 The basic building block of agentic systems is an LLM enhanced with augmentations such as retrieval, tools, and memory.
 
 <img src='/media/AIAgent/d3083d3f40bb2b6f477901cc9a240738d3dd1371-2401x1000.png'>
 
-开发中重点注意：
+Two things to focus on during development:
 
-1. 根据需求定制功能 （MCP，A2A）
-2. 确保为LLM提供简单易用且文档齐全的接口
+1. Customize capabilities to fit your needs (MCP, A2A).
+2. Give the LLM interfaces that are easy to use and well documented.
 
-## 5种 workflow patterns 设计模式
+## Five workflow patterns
 
-### 1）Prompt chaining 提示链
+### 1) Prompt chaining
 
-提示链将任务分解为一系列步骤，其中每个 LLM 调用都会处理前一个调用的输出，其实就是 COT - chain of thought
+Prompt chaining breaks a task into a sequence of steps, with each LLM call processing the previous call's output. I think of this as COT — chain of thought.
 
 <img src = '/media/AIAgent/7418719e3dab222dccb379b8879e1dc08ad34c78-2401x1000.png'>
 
-何时使用此工作流程： 此工作流程非常适合任务可以轻松且清晰地分解为固定子任务的情况。其主要目标是通过简化每次 LLM 调用，以牺牲延迟为代价来换取更高的准确率。
+When to use this workflow: it works well when a task can be cleanly and easily divided into fixed subtasks. The main goal is to trade latency for higher accuracy by making each LLM call simpler.
 
-提示链的用途示例:
-- 先写出文档大纲，检查大纲是否符合特定标准，然后根据大纲撰写文档。
-- 撰写营销文案，然后将其翻译成另一种语言。
+Examples of prompt chaining:
+- Write a document outline, check that it meets specific criteria, and then write the document from that outline.
+- Write marketing copy, then translate it into another language.
 
-### 2）Routing 路由
+### 2) Routing
 
-路由机制对输入进行分类，并将其导向特定的后续任务。这种工作流程实现了关注点分离，并能构建更具针对性的提示。如果没有这种工作流程，针对一种输入进行优化可能会影响对其他输入的性能。
+Routing classifies an input and directs it to a specific downstream task. This separates concerns and allows more targeted prompts. Without it, optimizing for one kind of input can hurt performance on others.
 
 <img src = '/media/AIAgent/5c0c0e9fe4def0b584c04d37849941da55e5e71c-2401x1000.png'>
 
-何时使用此工作流程： 路由适用于复杂的任务，这些任务有不同的类别，最好分开处理，并且可以通过 LLM 或更传统的分类模型/算法准确地处理分类。
+When to use this workflow: routing suits complex tasks with distinct categories that are best handled separately, where an LLM or a conventional classification model or algorithm can classify inputs accurately.
 
-路由功能的应用示例：
-- 将不同类型的客户服务查询（一般问题、退款请求、技术支持）导向不同的下游流程、提示和工具。
-- (根据问题难度，使用不同模型回答) 将简单/常见的问题路由到 Claude Haiku 4.5 等较小、成本效益高的模型，将困难/不寻常的问题路由到 Claude Sonnet 4.5 等功能更强大的模型，以优化性能。
+Examples of routing:
+- Direct different customer service requests (general questions, refunds, technical support) to different downstream workflows, prompts, and tools.
+- Choose models based on question difficulty: route simple or common questions to smaller, cost-effective models such as Claude Haiku 4.5, and difficult or unusual questions to more capable models such as Claude Sonnet 4.5 to optimize performance.
 
-### 3）Parallelization 并行
+### 3) Parallelization
 
-多层级管理（LLM）有时可以同时处理同一任务，并通过程序自动汇总其输出。这种工作流程（即并行化）主要体现在两个方面：
+LLMs can sometimes work on a task simultaneously, with their outputs aggregated programmatically. This workflow has two main forms:
 
-- Sectioning 分段 ：将一项任务分解成若干个可以并行运行的独立子任务。
-- Voting 投票： 多次运行同一任务以获得不同的输出结果。
+- Sectioning: split a task into independent subtasks that can run in parallel.
+- Voting: run the same task multiple times to obtain different outputs.
 
 <img src = '/media/AIAgent/406bb032ca007fd1624f261af717d70e6ca86286-2401x1000.png'>
 
-何时使用此工作流程： 当拆分后的子任务可以并行处理以提高速度，或者需要从多个角度或多次尝试以获得更高置信度的结果时，并行化非常有效。对于涉及多个方面的复杂任务，如果每个方面都由单独的 LLM 调用来处理，则 LLM 通常表现更佳，这样可以集中精力关注每个特定方面。
+When to use this workflow: parallelization is useful when independent subtasks can run concurrently for speed, or when multiple perspectives or attempts produce a result with higher confidence. For complex tasks with several dimensions, LLMs often perform better when a separate call handles each dimension, keeping attention focused on that particular aspect.
 
-并行化的一些应用示例：
+Examples of parallelization:
 - sectioning:
-    - 实施防护机制，其中一个模型实例处理用户查询，而另一个模型实例则负责筛选不当内容或请求。这种方法通常比让同一个 LLM 调用同时处理防护机制和核心响应性能更好。
-    - 自动评估 LLM 性能，其中每次 LLM 调用都会评估模型在给定提示下的性能的不同方面。
+    - Implement guardrails with one model instance handling the user's query and another screening for inappropriate content or requests. This often works better than having a single LLM call handle both guardrails and the core response.
+    - Automate LLM evaluations, with each call evaluating a different aspect of the model's performance on a given prompt.
 - Voting:
-    - 对一段代码进行漏洞审查，其中多个不同的提示会审查代码，并在发现问题时标记代码。
-    - 评估给定内容是否不当，通过多个提示评估不同方面或要求不同的投票阈值来平衡误报和漏报。
+    - Review code for vulnerabilities using several different prompts, flagging the code when a problem is found.
+    - Assess whether content is inappropriate using multiple prompts to evaluate different aspects, or vary voting thresholds to balance false positives and false negatives.
     
-### 4) Orchestrator-workers 协调器-工作器
+### 4) Orchestrator-workers
  
-在协调器-工作者工作流程中，中央 LLM 动态地分解任务，将任务委派给工作者 LLM，并综合它们的结果。
+In this workflow, a central LLM dynamically breaks down a task, delegates subtasks to worker LLMs, and combines their results.
 
-何时使用此工作流程： 此工作流程非常适合难以预测所需子任务的复杂任务（例如，在编码过程中，需要修改的文件数量以及每个文件的修改性质可能取决于具体任务）。虽然其拓扑结构与并行化类似，但关键区别在于其灵活性——子任务并非预先定义，而是由协调器根据具体输入确定。coding agent
+When to use this workflow: it fits complex tasks where the necessary subtasks are hard to predict. In coding, for example, both the number of files to change and the nature of each change depend on the task. Its topology resembles parallelization, but the key difference is flexibility: subtasks are determined by the orchestrator from the input, rather than defined in advance. Think coding agents.
 
-编排器工作线程的用途示例：
+Examples of orchestrator-workers:
 
-- 每次都会对多个文件进行复杂更改的编码产品。
-- 搜索任务是指从多个来源收集和分析信息，以查找可能的相关信息。
+- Coding products that make complex changes across multiple files on each task.
+- Search tasks that gather and analyze information from multiple sources to find potentially relevant material.
 
-### 5）Evaluator-optimizer 评估器-优化器
+### 5) Evaluator-optimizer
 
-在评估器-优化器工作流程中，一个 LLM 调用生成响应，而另一个调用则提供评估和反馈，形成一个循环。
+In this workflow, one LLM call generates a response while another evaluates it and provides feedback, forming a loop.
 
-何时使用此工作流程： 当评估标准明确，且迭代改进能够带来可衡量的价值时，此工作流程尤为有效。良好的匹配度体现在两个方面：首先，当人提出反馈意见时，LLM 的响应能够得到显著改进；其次，LLM 能够提供此类反馈。这类似于人类作家在撰写一篇精炼文章时所经历的迭代写作过程。
+When to use this workflow: it works especially well when evaluation criteria are clear and iterative refinement adds measurable value. Two signs of a good fit: human feedback can noticeably improve an LLM's response, and the LLM can provide that kind of feedback itself. This resembles a human writer's iterative process of drafting and polishing an article.
 
-- 文学翻译中存在一些译者（法学硕士）可能无法立即捕捉到的细微差别，但评估者（法学硕士）可以提供有用的批评意见。
+- Literary translation, where an LLM translator may miss subtle nuances on the first pass, but an LLM evaluator can offer useful criticism.
 
-- 复杂的搜索任务，需要多轮搜索和分析才能收集到全面的信息，评估人员决定是否有必要进行进一步的搜索。
+- Complex search tasks that require several rounds of searching and analysis to gather comprehensive information, with an evaluator deciding whether further searches are necessary.
 
-## Agnets
+## Agents
 
-随着生命周期管理（LLM）的关键能力日趋成熟，智能体正逐渐应用于生产环境中。这些关键能力包括理解复杂输入、进行推理和规划、可靠地使用工具以及从错误中恢复。智能体的工作始于人类用户的指令或与其进行的交互式讨论。一旦任务明确，智能体便会独立进行规划和运行，并可能返回给人类用户以获取更多信息或判断。在执行过程中，智能体需要在每个步骤中从环境中获取“真实数据”（例如工具调用结果或代码执行情况），以评估其进度。智能体可以在检查点或遇到障碍时暂停，等待人类用户的反馈。任务通常会在完成后终止，但为了保持控制，通常也会设置停止条件（例如最大迭代次数）。
+Agents are increasingly being used in production as key LLM capabilities mature: understanding complex inputs, reasoning and planning, using tools reliably, and recovering from errors. An agent starts with instructions from a human or an interactive discussion. Once the task is clear, it plans and acts independently, potentially returning to the human for more information or judgment. At each step, it needs ground truth from the environment, such as tool results or code execution, to assess its progress. It can pause at checkpoints or obstacles for human feedback. A task usually ends when completed, but stopping conditions, such as a maximum iteration count, are often added to maintain control.
 
-智能体可以处理复杂的任务，但它们的实现通常很简单。它们通常只是基于环境反馈循环使用工具的逻辑逻辑模型（LLM）。因此，清晰周全地设计工具集及其文档至关重要。
+Agents can handle complex tasks, yet their implementations are often simple: an LLM using tools in a loop based on environmental feedback. That makes a clearly designed toolset and thorough documentation essential.
 
-下图类似Re-act (reasoning - action loop)
+The diagram below resembles ReAct (a reasoning–action loop).
 
 <img src = '/media/AIAgent/58d9f10c985c4eb5d53798dea315f7bb5ab6249e-2401x1000.png'>
 
-## 组合使用
-这些构建模块并非强制性的，而是开发者可以根据不同的使用场景进行调整和组合的通用模式。与任何生命周期管理 (LLM) 功能一样，成功的关键在于衡量性能并不断迭代改进。再次强调： 只有当增加复杂性能够显著提升结果时，才应该考虑增加复杂性。
+## Combining the patterns
+These building blocks are not mandatory recipes. They are general patterns that developers can adapt and combine for different use cases. As with any LLM capability, success depends on measuring performance and iterating. Again: add complexity only when it meaningfully improves results.
 
-## 遵循三个核心原则：
+## Follow three core principles
 
-1. 保持代理程序设计的简洁性 。
-2. 通过明确展示代理的规划步骤来提高透明度 。
-3. 通过详尽的工具文档和测试 ，精心设计您的代理-计算机接口 (ACI)。
+1. Keep agent designs simple.
+2. Improve transparency by making the agent's planning steps explicit.
+3. Carefully design the agent-computer interface (ACI) through thorough tool documentation and testing.

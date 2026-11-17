@@ -1,71 +1,71 @@
 ---
 title: "Anthropic - Introducing Contextual Retrieval (RAG)"
 date: 2026-02-12
-description: "Anthropic - 上下文检索解读"
+description: "Notes on Anthropic - Contextual Retrieval"
 tag: AIAgent
 prime: false
 ---
 
-# 简介 [本文链接](https://www.anthropic.com/engineering/contextual-retrieval)
+# Introduction [Source article](https://www.anthropic.com/engineering/contextual-retrieval)
 
-人工智能模型要想在特定场景下发挥作用，通常需要获取背景知识。例如，客服聊天机器人需要了解其所服务的特定业务，而法律分析机器人则需要了解大量的过往案例。
+AI models often need background knowledge to be useful in a particular setting. A customer service chatbot, for example, needs to understand the business it serves, while a legal analysis bot needs access to a large body of past cases.
 
-开发者通常使用检索增强生成（RAG）来增强人工智能模型的知识。RAG 是一种从知识库中检索相关信息并将其附加到用户提示中的方法，从而显著提升模型的响应能力。然而，传统的 RAG 解决方案在信息编码过程中会丢失上下文信息，这往往会导致系统无法从知识库中检索到相关信息。
+Developers commonly use retrieval-augmented generation (RAG) to expand a model's knowledge. RAG retrieves relevant information from a knowledge base and adds it to the user's prompt, significantly improving the model's responses. Traditional RAG, however, loses context when encoding information, which can prevent the system from retrieving relevant material.
 
-本文介绍了一种能够显著提升 RAG 检索步骤的方法。该方法名为“上下文检索”，它采用了两种子技术：上下文嵌入和上下文 BM25。该方法可以将检索失败率降低 49%，与重排序结合使用时，可降低 67%。这些显著的提升意味着检索准确率的大幅提高，进而直接转化为下游任务性能的提升。
+This article introduces Contextual Retrieval, a method that substantially improves the retrieval step in RAG. It combines two techniques: Contextual Embeddings and Contextual BM25. Together, they reduce retrieval failures by 49%, or by 67% when combined with reranking. Better retrieval accuracy translates directly into better performance on downstream tasks.
 
-## 关于使用更长提示的说明
+## A note on longer prompts
 
-有时候最简单的解决方案就是最好的。如果你的知识库小于 20 万个词元（大约 500 页材料），你可以直接将整个知识库包含在你给模型的提示中，而无需使用 RAG 或类似方法。
+Sometimes the simplest solution is the best. If your knowledge base contains fewer than 200,000 tokens, roughly 500 pages, you can put the entire knowledge base in the model's prompt without using RAG or a similar technique.
 
-几周前，我们发布了 Claude 的提示缓存功能 ，这使得这种方法速度更快、成本更低。现在，开发人员可以在 API 调用之间缓存常用提示，从而将延迟降低 2 倍，成本降低高达 90%（您可以阅读我们的[提示缓存指南](https://platform.claude.com/cookbook/misc-prompt-caching)了解其工作原理）。
+A few weeks before the source article was published, we introduced prompt caching for Claude, making this approach faster and cheaper. Developers can cache frequently used prompts across API calls, cutting latency in half and reducing costs by up to 90%. See the [prompt caching guide](https://platform.claude.com/cookbook/misc-prompt-caching) for details.
 
-然而，随着知识库的增长，您将需要更具可扩展性的解决方案。这时，上下文检索就派上了用场。
+As your knowledge base grows, though, you need a more scalable solution. That is where Contextual Retrieval comes in.
 
-## RAG 入门指南：如何扩展到更大的知识库
+## A RAG primer: scaling to larger knowledge bases
 
-对于超出上下文窗口范围的大型知识库，RAG 是一种典型的解决方案。RAG 的工作原理是通过以下步骤对知识库进行预处理：
+RAG is a standard solution for knowledge bases too large to fit in a context window. It preprocesses the knowledge base as follows:
 
-1. 知识库（文档“语料库”）分解成更小的文本块，通常不超过几百个词元；
-2. 使用嵌入模型将这些块转换为编码含义的向量嵌入；
-3. 将这些嵌入存储在向量数据库中，以便按语义相似性进行搜索。
+1. Split the knowledge base, or document corpus, into smaller text chunks, usually no more than a few hundred tokens each.
+2. Use an embedding model to convert those chunks into vectors that encode their meaning.
+3. Store the embeddings in a vector database for semantic similarity search.
 
-在运行时，当用户向模型输入查询时，向量数据库会根据与查询的语义相似度查找最相关的词块。然后，这些最相关的词块会被添加到发送给生成模型的提示信息中。
+At runtime, when a user submits a query, the vector database finds the chunks most semantically similar to that query. Those chunks are then added to the prompt sent to the generative model.
 
-虽然词嵌入模型在捕捉语义关系方面表现出色，但它们可能会遗漏关键的精确匹配。幸运的是，有一种较早的技术可以帮助解决这些问题。BM25（Best Matching 25）是一种排名函数，它使用词汇匹配来查找精确的单词或短语匹配项。对于包含唯一标识符或技术术语的查询，它尤其有效。
+Embedding models capture semantic relationships well, but they can miss important exact matches. An older technique helps here: BM25 (Best Matching 25), a ranking function that uses lexical matching to find exact words or phrases. It is especially useful for queries containing unique identifiers or technical terms.
 
-BM25 的工作原理基于 TF-IDF（词频-逆文档频率）的概念。TF-IDF 衡量一个词对于某个文档的重要性。BM25 通过考虑文档长度并对词频应用饱和函数来改进 TF-IDF，从而有助于防止常用词主导结果。
+BM25 builds on TF-IDF, or term frequency–inverse document frequency, which measures a term's importance to a document. BM25 improves on it by accounting for document length and applying a saturation function to term frequency, helping prevent common words from dominating the results.
 
-以下是 BM25 如何弥补语义嵌入的不足之处：假设用户在技术支持数据库中查询“错误代码 TS-999”。嵌入模型或许能找到关于错误代码的一般性内容，但却可能遗漏“TS-999”这个精确匹配项。而 BM25 则会查找这个特定的文本字符串来识别相关的文档。
+For example, suppose a user searches a technical support database for “error code TS-999.” An embedding model might retrieve general material about error codes while missing the exact identifier “TS-999.” BM25 looks for that specific text string to identify relevant documents.
 
-RAG 解决方案通过结合嵌入和 BM25 技术，可以更准确地检索最适用的数据块，具体步骤如下：
+Combining embeddings with BM25 lets RAG retrieve the most relevant chunks more accurately, using these steps:
 
 <img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F45603646e979c62349ce27744a940abf30200d57-3840x2160.png&w=3840&q=75'>
 
-1. 将知识库（文档“语料库”）分解成更小的文本块，通常不超过几百个词元；
-2. 为这些数据块创建 TF-IDF 编码和语义嵌入；
-3. 使用 BM25 根据精确匹配查找最佳块；
-4. 利用词嵌入技术，根据语义相似性找到最佳词块；
-5. 使用排序融合技术合并和去重（3）和（4）的结果；
-6. 将前 K 个数据块添加到提示中以生成响应。
+1. Split the knowledge base, or document corpus, into smaller chunks, usually no more than a few hundred tokens each.
+2. Create TF-IDF encodings and semantic embeddings for the chunks.
+3. Use BM25 to find the best chunks based on exact matches.
+4. Use embeddings to find the best chunks based on semantic similarity.
+5. Combine and deduplicate the results from steps 3 and 4 using rank fusion.
+6. Add the top K chunks to the prompt to generate a response.
 
-通过结合 BM25 和嵌入模型，传统的 RAG 系统可以提供更全面、更准确的结果，在精确的术语匹配和更广泛的语义理解之间取得平衡。
+Combining BM25 and embeddings gives traditional RAG more comprehensive, accurate results by balancing exact term matching with broader semantic understanding.
 
-这种方法可以经济高效地扩展到庞大的知识库，远远超出单个提示所能容纳的内容。但这些传统的RAG有一个重大局限性：它们常常会破坏上下文信息。
+This approach scales cost-effectively to knowledge bases far larger than a single prompt can hold. But traditional RAG has a major limitation: it often strips away context.
 
-## 传统 RAG 中的语境难题
+## The context problem in traditional RAG
 
-在传统的RAG中，文档通常会被分割成较小的块以便高效检索。虽然这种方法对许多应用场景都有效，但当单个块缺乏足够的上下文信息时，就会导致问题。
+Traditional RAG divides documents into small chunks for efficient retrieval. This works for many applications, but problems arise when individual chunks do not carry enough context.
 
-例如，假设你的知识库中嵌入了一系列财务信息（例如，美国证券交易委员会的文件），你收到了以下问题： “ACME 公司 2023 年第二季度的收入增长是多少？”
+Suppose your knowledge base contains embedded financial information, such as SEC filings, and someone asks: “How much did ACME Corporation's revenue grow in Q2 2023?”
 
-相关的文本片段可能包含以下内容： “该公司营收较上一季度增长了 3%。” 然而，仅凭这一片段并未具体说明指的是哪家公司或相关的时间段，因此难以检索到正确的信息或有效地利用这些信息。
+The relevant chunk might say: “The company's revenue grew by 3% over the previous quarter.” On its own, this does not identify the company or time period, making the information difficult to retrieve or use effectively.
 
-## 引入上下文检索
+## Introducing Contextual Retrieval
 
-上下文检索通过在嵌入之前为每个块添加特定于块的解释性上下文（“上下文嵌入”）并创建 BM25 索引（“上下文 BM25”）来解决此问题。
+Contextual Retrieval addresses this by prepending explanatory context specific to each chunk before embedding it (Contextual Embeddings) and before building the BM25 index (Contextual BM25).
 
-让我们回到之前提到的美国证券交易委员会（SEC）文件收集示例。以下是一个数据块转换示例：
+Returning to the SEC filings example, here is how a chunk can be transformed:
 
 ```text
 original_chunk = "The company's revenue grew by 3% over the previous quarter."
@@ -73,11 +73,11 @@ original_chunk = "The company's revenue grew by 3% over the previous quarter."
 contextualized_chunk = "This chunk is from an SEC filing on ACME corp's performance in Q2 2023; the previous quarter's revenue was $314 million. The company's revenue grew by 3% over the previous quarter."
 ```
 
-值得注意的是，过去也曾有人提出过其他利用上下文信息提升检索效果的方法。其他方案包括： 在文档块中添加通用文档摘要 （我们进行了实验，发现效果非常有限）、 假设文档嵌入以及基于摘要的索引 （我们进行了评估，发现性能不佳）。这些方法与本文提出的方法有所不同。
+Other ways of using context to improve retrieval have been proposed before. These include adding generic document summaries to chunks, which produced very limited gains in our experiments; hypothetical document embeddings; and summary-based indexing, which performed poorly in our evaluations. These differ from the approach described here.
 
-## 实现上下文检索
+## Implementing Contextual Retrieval
 
-当然，手动标注知识库中成千上万甚至数百万个文本块的工作量实在太大了。为了实现上下文检索，我们采用了 Claude 模型。我们编写了一个提示，指示模型提供简洁的、特定于文本块的上下文，并结合整个文档的上下文来解释该文本块。我们使用以下 Claude 3 Haiku 提示来为每个文本块生成上下文：
+Manually annotating thousands or millions of chunks would be impractical. Instead, we use Claude with a prompt that asks for concise, chunk-specific context explaining how the chunk fits into the whole document. We used the following Claude 3 Haiku prompt to generate context for each chunk:
 
 <img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F2496e7c6fedd7ffaa043895c23a4089638b0c21b-3840x2160.png&w=3840&q=75'>
 
@@ -92,85 +92,85 @@ Here is the chunk we want to situate within the whole document
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else. 
 ```
 
-生成的上下文文本（通常为 50-100 个词元）会在嵌入数据块之前以及创建 BM25 索引之前添加到数据块的前面。
+The generated context, typically 50–100 tokens, is prepended to each chunk before embedding it and before creating the BM25 index.
 
-## Using Prompt Caching to reduce the costs of Contextual Retrieval 利用提示缓存降低上下文检索的成本
+## Using Prompt Caching to reduce the costs of Contextual Retrieval
 
-[提示缓存指南](https://platform.claude.com/cookbook/misc-prompt-caching)
+[Prompt caching guide](https://platform.claude.com/cookbook/misc-prompt-caching)
 
-得益于我们前面提到的特殊提示缓存功能，Claude 能够以极低的成本实现上下文检索。有了提示缓存，您无需为每个数据块都传入参考文档。您只需将文档加载到缓存中一次，然后引用之前缓存的内容即可。假设有 800 个 token 数据块、8000 个 token 文档、50 条 token 上下文指令，并且每个数据块包含 100 个 token 的上下文信息， 那么生成上下文数据块的一次性成本为每百万个文档 token 1.02 美元 。
+The prompt caching feature mentioned earlier makes Contextual Retrieval inexpensive with Claude. Instead of passing the reference document again for every chunk, load it into the cache once and refer to the cached content. Assuming 800-token chunks, 8,000-token documents, 50-token contextualization instructions, and 100 tokens of generated context per chunk, the one-time cost is $1.02 per million document tokens.
 
-### Methodology  方法论
+### Methodology
 
-我们针对不同的知识领域（代码库、小说、arXiv 论文、科学论文）、嵌入模型、检索策略和评估指标进行了实验。 附录二列出了我们针对每个领域使用的一些问答示例。
+We experimented across knowledge domains (codebases, fiction, arXiv papers, and scientific papers), embedding models, retrieval strategies, and evaluation metrics. Appendix II of the source article lists example questions and answers for each domain.
 
-下图展示了在所有知识领域中使用性能最佳的嵌入配置（Gemini Text 004）并检索前 20 个数据块的平均性能。我们使用 1 减去 recall@20 作为评估指标，该指标衡量的是未能在前 20 个数据块中检索到的相关文档的百分比。您可以在附录中查看完整结果——上下文关联在我们评估的每种嵌入源组合中都提高了性能。
+The chart below shows average performance across domains using the best-performing embedding configuration, Gemini Text 004, and retrieving the top 20 chunks. The metric is 1 minus recall@20: the percentage of relevant documents not retrieved within those top 20 chunks. Full results are in the source article's appendix. Contextualization improved performance for every embedding-and-source combination evaluated.
 
-性能提升：
+Performance gains:
 
 <img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F7f8d739e491fe6b3ba0e6a9c74e4083d760b88c9-3840x2160.png&w=3840&q=75'>
 
-上下文嵌入将前 20 个数据块检索失败率降低了 35% （5.7% → 3.7%）。
+Contextual Embeddings reduced top-20 retrieval failures by 35% (5.7% → 3.7%).
 
-结合上下文嵌入和上下文 BM25，前 20 个数据块检索失败率降低了 49% （5.7% → 2.9%）。
+Combining Contextual Embeddings with Contextual BM25 reduced top-20 retrieval failures by 49% (5.7% → 2.9%).
 
-**注意事项**
+**Things to consider**
 
-1. 数据块边界： 考虑如何将文档分割成数据块。数据块大小、数据块边界和数据块重叠的选择会影响检索性能
+1. Chunk boundaries: think carefully about how documents are split. Chunk size, boundaries, and overlap all affect retrieval performance.
 
-2. 嵌入模型： 虽然上下文检索提升了我们测试的所有嵌入模型的性能，但某些模型可能受益更多。我们发现 Gemini 和 Voyage 嵌入模型尤其有效。
+2. Embedding models: Contextual Retrieval improved every model we tested, but some benefited more than others. Gemini and Voyage embeddings were particularly effective.
 
-3. 自定义上下文提示： 虽然我们提供的通用提示效果不错，但如果您使用针对特定领域或用例量身定制的提示（例如，包含可能仅在知识库的其他文档中定义的关键术语词汇表），则可能会获得更好的结果。
+3. Custom contextualization prompts: our general prompt works well, but prompts tailored to your domain or use case may work better. For example, include a glossary of key terms that are defined only in other documents in the knowledge base.
 
-4. 信息块数量： 在上下文窗口中添加更多信息块可以提高包含相关信息的概率。但是，过多的信息可能会分散模型的注意力，因此信息块的数量应该有所限制。我们尝试了 5 个、10 个和 20 个信息块，发现 20 个信息块的性能最佳
+4. Number of chunks: adding more chunks increases the chance of including relevant information, but too much information can distract the model. We tested 5, 10, and 20 chunks and found that 20 worked best.
 
-始终运行 evals： 通过向其传递上下文块并区分什么是上下文什么是块，可以改进响应生成。
+Always run evals. Response generation can also improve when you pass contextualized chunks to the model and distinguish the added context from the original chunk.
 
-## Reranking 通过重新排名进一步提升性能
+## Reranking for further performance gains
 
-最后，我们可以将上下文检索与其他技术相结合，以进一步提升性能。在传统的 RAG 算法中，AI 系统会搜索其知识库，以查找潜在的相关信息块。对于大型知识库，这种初始检索通常会返回大量信息块——有时甚至多达数百个——这些信息块的相关性和重要性参差不齐。
+Contextual Retrieval can be combined with other techniques for further gains. Traditional RAG searches a knowledge base for potentially relevant chunks. With large knowledge bases, this initial retrieval may return many chunks, sometimes hundreds, with widely varying relevance and importance.
 
-重排序是一种常用的过滤技术，它确保只有最相关的数据块才会被传递给模型。重排序能够提供更好的响应，并降低成本和延迟，因为模型需要处理的信息量更少。其关键步骤如下：
+Reranking is a common filtering technique that passes only the most relevant chunks to the model. It improves responses and can reduce costs and latency by reducing the information the model must process. The main steps are:
 
-1. 执行初始检索，获取最有可能相关的块（我们使用了前 150 个）；
+1. Perform initial retrieval to obtain potentially relevant chunks. We used the top 150.
 
-2. 将前 N 个数据块连同用户的查询一起传递给重排序模型；
+2. Pass the top N chunks and the user's query to a reranking model.
 
-3. 使用重排序模型，根据每个块与提示的相关性和重要性给每个块打分，然后选择前 K 个块（我们使用了前 20 个块）；
+3. Score each chunk for relevance and importance to the prompt, then select the top K. We used the top 20.
 
-4. 将前 K 个数据块作为上下文传递给模型，以生成最终结果。
+4. Pass those top K chunks to the model as context to generate the final result.
 
-性能提升：
+Performance gains:
 
 <img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F8f82c6175a64442ceff4334b54fac2ab3436a1d1-3840x2160.png&w=3840&q=75'>
 
-市面上有很多重排序模型。我们使用 Cohere 重排序器进行了测试。Voyage 也提供重排序器 ，但我们没有时间进行测试。我们的实验表明，在各种领域中，添加重排序步骤可以进一步优化检索效果。
+Many reranking models are available. We tested Cohere's reranker. Voyage also offers one, but we did not have time to test it. Our experiments showed that adding reranking improved retrieval across domains.
 
-具体来说，我们发现重新排序的上下文嵌入和上下文 BM25 将前 20 个数据块检索失败率降低了 67%（5.7% → 1.9%）。
+Specifically, reranking Contextual Embeddings and Contextual BM25 results reduced top-20 retrieval failures by 67% (5.7% → 1.9%).
 
-## 成本和延迟方面的考虑
+## Cost and latency considerations
 
-重新排序时需要考虑的一个重要因素是其对延迟和成本的影响，尤其是在对大量数据块进行重新排序时。由于重新排序会在运行时增加一个额外的步骤，因此即使重新排序器并行对所有数据块进行评分，也不可​​避免地会增加少量延迟。重新排序更多数据块以获得更佳性能与重新排序更少数据块以降低延迟和成本之间存在固有的权衡。我们建议您在具体的使用场景中尝试不同的设置，以找到最佳平衡点。
+Reranking affects latency and cost, especially when many chunks are involved. It adds a runtime step, so even a reranker that scores all chunks in parallel introduces some latency. There is an inherent trade-off between reranking more chunks for better performance and fewer chunks for lower latency and cost. Try different settings for your use case to find the right balance.
 
-## Conclusion  结论
+## Conclusion
 
-我们进行了大量测试，比较了上述所有技术（嵌入模型、BM25 算法、上下文检索、重排序器以及检索到的前 K 个结果总数）的不同组合，所有测试均针对各种不同的数据集类型。以下是我们的发现总结：
+We tested combinations of embedding models, BM25, Contextual Retrieval, rerankers, and the total number of retrieved chunks across different dataset types. Here is what we found:
 
-1. Embeddings+BM25 比单独使用嵌入更好；
+1. Embeddings plus BM25 work better than embeddings alone.
 
-2. 在我们测试过的芯片中，Voyage 和 Gemini 的嵌入效果最好；
+2. Voyage and Gemini produced the best embeddings among the models we tested.
 
-3. 将前 20 个数据块传递给模型比只传递前 10 个或前 5 个数据块更有效；
+3. Passing the top 20 chunks to the model works better than passing only 10 or 5.
 
-4. 为数据块添加上下文信息可以大大提高检索准确率；
+4. Adding context to chunks substantially improves retrieval accuracy.
 
-5. 重新排名总比不重新排名好；
+5. Reranking consistently outperforms not reranking in these tests.
 
-6. 所有这些好处叠加起来 ：为了最大限度地提高性能，我们可以将上下文嵌入（来自 Voyage 或 Gemini）与上下文 BM25 结合，再加上重新排序步骤，并将 20 个块添加到提示中。
+6. These benefits stack: for maximum performance, combine Contextual Embeddings from Voyage or Gemini with Contextual BM25, add reranking, and include 20 chunks in the prompt.
 
-## 对比数据
+## Comparison data
 
-以下是按数据集、嵌入提供商、除嵌入外还使用 BM25、使用上下文检索以及对检索 @ 20 进行重排序的结果细分。
+The following results are broken down by dataset, embedding provider, whether BM25 is used alongside embeddings, whether Contextual Retrieval is enabled, and whether results are reranked for retrieval@20.
 
 <img src = 'https://www.anthropic.com/_next/image?url=https%3A%2F%2Fwww-cdn.anthropic.com%2Fimages%2F4zrzovbb%2Fwebsite%2F646a894ec4e6120cade9951a362f685cd2ec89b2-2458x2983.png&w=3840&q=75'>
 

@@ -1,167 +1,167 @@
 ---
-title: "Claude Code源码分析"
+title: "Claude Code Source Code Analysis"
 date: 2026-05-19
-description: "Claude Code源码分析 - Agent 设计"
+description: "Claude Code source code analysis - Agent design"
 tag: AIAgent
 prime: false
 pinned: true
 ---
 
-## Claude Code源码分析摘要
+## Claude Code source code analysis: overview
 
-Claude Code价值在于Harness的设计，分为四个部分
+Claude Code's value lies in the design of its harness. I divide it into four parts:
 
-1. Runtime 内核
-2. 状态连续性
-3. 安全与扩展
-4. 思想总结
+1. Runtime core
+2. State continuity
+3. Safety and extensibility
+4. Key takeaways
 
 ## Agent Runtime
 
-用户输入不是发给模型，而是走一整条本地装配 -> 权限 -> 工具 -> memory的运行时链路
+User input does not simply go straight to the model. It passes through a full runtime chain: local assembly -> permissions -> tools -> memory.
 
 ```javascript
 ENTRY CHAIN
-cli.tsx                         // CLI入口
-    -> main.tsx                 // 主函数
-    -> init + setup             // trust 前安全初始化
-    -> lanchRepl()              // Ink + React启动，Ink 是一个“在终端里跑 React”的框架。
-    -> App + REPL               // TUI与AppState （Read–Eval–Print Loop）
-    -> query()                  // 执行核心循环
-        -> api.stream(msgs)     // 调用Claude API
-        -> runTools(...)        // 工具并发 + 权限 + hooks
-        -> compact / hooks      // 轮次善后 + memory抽取
-        -> tool_result 回灌     // 下一轮
+cli.tsx                         // CLI entry point
+    -> main.tsx                 // Main function
+    -> init + setup             // Security initialization before trust is established
+    -> lanchRepl()              // Start Ink + React; Ink is a framework for running React in the terminal.
+    -> App + REPL               // TUI and AppState (Read–Eval–Print Loop)
+    -> query()                  // Run the core loop
+        -> api.stream(msgs)     // Call the Claude API
+        -> runTools(...)        // Tool concurrency + permissions + hooks
+        -> compact / hooks      // Turn cleanup + memory extraction
+        -> tool_result fed back // Next turn
 ```
 
-trust 前安全初始化主要是 检查当前目录是否可信，检查是否允许执行工具（文件写入、shell 等），初始化权限系统（类似 Cursor/Windsurf 的 sandbox）等
+Security initialization before trust is established mainly checks whether the current directory is trusted, checks whether tools such as file writes and shell commands are allowed, and initializes the permission system, similar to the sandbox in Cursor or Windsurf.
 
 ```javascript
-main.tsx (主逻辑伪代码)
+main.tsx (main logic pseudocode)
 
 async function main(argv) {
-    await init(argv)                        // trust 前安全初始化
+    await init(argv)                        // Security initialization before trust is established
     if (argv.print) return runHeadless()    // no GUI mode
     if (argv.bridge) return runBridge()     // IDE Plugin
     if (argv.remote) return runRemote()     // SSH, cloud mode
-    // 默认路径：完整runtime
+    // Default path: full runtime
     const tools = getTools(permCtx)
     const mcp = await getMcpTools()
     const skills = initBundledSkills()
     const agents = getAgentDefs()
-    await initTelemetryAfterTrust()         // 运行时事件上报系统，用于Claude Code团队进行优化，可以理解为Spring的AOP cross-cutting concern
+    await initTelemetryAfterTrust()         // Runtime event reporting for the Claude Code team's improvements; think of it as a cross-cutting concern in Spring AOP.
     await launchRepl(...)
 }
 ```
 
-所有的运行形态 (REPL/headless/SDK/bridge/remote/subagent)都共用一条Query()内核实现
+All execution modes (REPL/headless/SDK/bridge/remote/subagent) share the same Query() core implementation.
 
 ## Query Loop
 
-6个phase + AsyncGenerator背压，让长会话在错误，超限，中断下都能继续
+Six phases plus AsyncGenerator backpressure let long conversations continue through errors, limit overruns, and interruptions.
 
 ```javaScript
 query.ts
 
 async functions* query(state) {
     while (true) {
-        yield* preApiPhase(state)                       // 1. 装配attachments / skills / memory
-        const res = yield* apiRequestPhase(state)       // 2. 流式传输API + 重试
-        const t = yield* processResponse(res, state)    // 3. 解析 -> Transition
-        if (t === 'tool_use') yield* executeTools(state)// 4. 并发 + 权限 + hooks
-        if (shouldStop(t)) yield* runStopHooks(state)   // 5. 轮次后钩子
-        if (shouldExit(t)) break                        // 6. 判断结束
+        yield* preApiPhase(state)                       // 1. Assemble attachments / skills / memory
+        const res = yield* apiRequestPhase(state)       // 2. Streaming API + retries
+        const t = yield* processResponse(res, state)    // 3. Parse -> Transition
+        if (t === 'tool_use') yield* executeTools(state)// 4. Concurrency + permissions + hooks
+        if (shouldStop(t)) yield* runStopHooks(state)   // 5. Post-turn hooks
+        if (shouldExit(t)) break                        // 6. Check whether to exit
         state.turnCount++
     }
 }
 ```
 
-state = 当前 REPL 的完整上下文（messages、tools、turnCount、memory 等）
+state = the current REPL's full context (messages, tools, turnCount, memory, etc.).
 
-transition = LLM 输出后，runtime 应该采取的下一步动作
+transition = the next action the runtime should take after the LLM produces output.
 
-输出是流式输出，在前端展示的时候，下一步已经调用了，所以使用起来会很流畅
+Output is streamed. While the frontend displays it, the next step has already been invoked, which makes the interaction feel smooth.
 
-**以下是Transition的状态：**
+**Transition states:**
 ```
-continue            正常进入下一轮
-tool_use            有工具执行
-end_turn            模型主动结束
-stop_sequence       命中 stop seq
-max_tokens          触发输出上限
-error_recovery      进入错误恢复
-budget_exceeded     预算/递减收益
-abort               用户取消
+continue            Proceed normally to the next turn
+tool_use            Execute tools
+end_turn            Model ends the turn voluntarily
+stop_sequence       Stop sequence reached
+max_tokens          Output limit reached
+error_recovery      Enter error recovery
+budget_exceeded     Budget limit / diminishing returns
+abort               User cancellation
 ```
 
-### 七级错误恢复级联
+### Seven-level error recovery cascade
 
 ```
 L1: Streaming fallback
-// 流式回退：如果流式输出中断（网络抖动、模型中断），切换到非流式一次性请求继续完成当前轮次。
+// Streaming fallback: if streaming is interrupted by a network issue or model interruption, switch to a non-streaming request to finish the current turn.
 
 L2: Collapse
-// 上下文折叠：自动压缩 messages（如合并历史、移除冗余、缩短工具日志）以减少 token 压力，避免因上下文过大导致失败。
+// Context collapse: automatically compress messages by merging history, removing redundancy, or shortening tool logs to reduce token pressure and avoid context-size failures.
 
 L3: Reactive compact
-// 反应式压缩：在模型返回错误或不完整输出时，立即对上下文进行更激进的压缩（删除旧轮次、裁剪长内容），然后重试。
+// Reactive compaction: when the model returns an error or incomplete output, immediately compact context more aggressively by removing old turns or trimming long content, then retry.
 
 L4: Max output escalation
-// 最大输出升级：如果模型因为 max_tokens 限制而中断，自动提高 max_tokens 或切换到更大预算的模式重新请求。
+// Maximum output escalation: if max_tokens interrupts the model, increase max_tokens or retry in a mode with a larger budget.
 
 L5: Multi-turn continue
-// 多轮续写：如果模型输出被截断或逻辑未完成，自动发起“继续（continue）”请求，让模型从断点继续生成。
+// Multi-turn continuation: if output is truncated or the logic is unfinished, automatically send a continuation request so the model resumes from where it stopped.
 
 L6: Stop hook blocking
-// 停止钩子阻断：如果 stop_sequence 或 end_turn 提前触发，阻断 stop 钩子，让模型继续生成直到任务完成。
+// Stop hook blocking: if stop_sequence or end_turn fires too early, block stopping through the stop hook so generation continues until the task is complete.
 
 L7: Budget continuation
-// 预算续航：如果触发预算限制（如递减收益、成本上限），进入低成本模式继续执行（如缩短上下文、降低频率）。
+// Budget continuation: when a budget limit is reached, such as diminishing returns or a cost cap, continue in a lower-cost mode, for example with shorter context or lower frequency.
 ```
 
-“永不轻易失败”的状态机 - 从轻到重的恢复链：
+A state machine that does not give up easily: recovery progresses from lighter to heavier interventions.
 
-L1–L2：轻量恢复（网络/上下文问题）
+L1–L2: lightweight recovery (network or context issues)
 
-L3–L4：中度恢复（模型输出不完整）
+L3–L4: moderate recovery (incomplete model output)
 
-L5–L6：逻辑恢复（模型提前结束）
+L5–L6: logical recovery (the model stops too early)
 
-L7：预算恢复（成本/限制问题）
+L7: budget recovery (cost or limit issues)
 
-## TOOL运行时协议对象
+## Tool runtime protocol objects
 
-Claude code对Tool定义为标准化的协议对象，而不是函数映射：安全并非在最外层套一个对象来保护，而是在内每个工具都要遵守
+Claude Code defines tools as standardized protocol objects rather than a mapping of functions. Safety is not just an outer wrapper: every tool must follow the protocol internally.
 
 ```js
-// Tool 接口（src/Tool.ts，首脑大量可扩展）
+// Tool interface (src/Tool.ts; extensively extensible)
 type Tool = {
   name
   description()
   inputSchema
   call(input, context, canUseTool)
 
-  // 运行时治理
+  // Runtime governance
   isReadOnly()
   isConcurrencySafe()
   checkPermissions()
 
-  // UI / 结果如何回放
+  // UI / how results are presented and replayed
   renderToolUseMessage()
   mapToolResultToToolResultBlockParam()
 }
 ```
 
 ```js
-// buildTool（src/Tool，安全默认值）
+// buildTool (src/Tool; safe defaults)
 
 const TOOL_DEFAULTS = {
   isEnabled: true,
 
-  // 非默认并发，未声明则串行
+  // Concurrency is opt-in; run serially unless declared otherwise
   isConcurrencySafe: false,
 
-  // 未声明则非只读
+  // Not read-only unless explicitly declared
   isReadOnly: false,
 
   isDestructive: false,
@@ -181,99 +181,99 @@ function buildTool(def) {
 }
 ```
 
-### 三：Tool不是函数映射，而是标准化协议对象
+### Three: a Tool is a standardized protocol object, not a function mapping
 
-同一份定义同时服务：
+The same definition supports all of the following:
 
-- 模型调用
-- 权限判断
-- 并发调度
-- UI 呈现
-- 结果回流
+- Model invocation
+- Permission checks
+- Concurrency scheduling
+- UI presentation
+- Feeding results back
 
 ---
 
-### 接口到实例的关系
+### From interface to instance
 
-`Tool.ts` 定义完整运行时协议：
+`Tool.ts` defines the complete runtime protocol:
 
-- 模型描述
-- 输入 schema
-- 执行函数
-- 权限判断
-- 并发属性
-- UI 渲染
-- 结果映射
+- Model-facing description
+- Input schema
+- Execution function
+- Permission checks
+- Concurrency properties
+- UI rendering
+- Result mapping
 
-具体工具在各自文件中声明 `ToolDef`，例如：
+Each concrete tool declares a `ToolDef` in its own file, for example:
 
 - `BashTool`
 - `FileReadTool`
 - `TodoWriteTool`
 
-这些定义提供工具特化逻辑。
+These definitions provide the tool-specific logic.
 
-`buildTool` 只补齐 `DefaultableToolKeys`。
+`buildTool` only fills in `DefaultableToolKeys`.
 
 ---
 
-### 设计含义
+### Design implications
 
-工具作者关注“特化行为”：
+Tool authors focus on specialized behavior.
 
-公共默认值集中在 `buildTool` 中维护。
+Shared defaults are maintained centrally in `buildTool`.
 
-展开顺序为：
+The spread order is:
 
 ```js
 defaults -> def
 ```
 
-因此具体工具的显式声明会覆盖默认值。
+Explicit declarations in a concrete tool therefore override the defaults.
 
-这使新增工具默认进入统一的：
+This brings new tools into a unified set of mechanisms by default:
 
-- 权限机制
-- 并发机制
-- 显示机制
-- 结果回流机制
+- Permissions
+- Concurrency
+- Presentation
+- Result feedback
 
-## 四：Tool 执行：受治理的执行管线
+## Four: tool execution through a governed pipeline
 
-> Tool 协议只有进入调度器，才真正变成可控、可并发、可回写 transcript 的行动
+> A Tool protocol becomes a controlled, potentially concurrent action that writes back to the transcript only when it enters the scheduler.
 
 ---
 
-### Tool call 完整链路
+### The complete tool call chain
 
 ```js
-// 模型输出 assistant message
-//   ↓ 含一个或多个 tool_use blocks
+// The model outputs an assistant message
+//   ↓ Contains one or more tool_use blocks
 
-query.ts 收集 tool_use
-
-//   ↓
-
-toolOrchestration.ts 按 isConcurrencySafe 分批
+query.ts collects tool_use
 
 //   ↓
 
-toolExecution.ts 逐个执行
+toolOrchestration.ts batches by isConcurrencySafe
 
-//   ├─ schema 校验
+//   ↓
+
+toolExecution.ts executes each tool
+
+//   ├─ schema validation
 //   ├─ validateInput
 //   ├─ pre-tool hooks
 //   ├─ permission / ask / deny
 //   ├─ tool.call()
 //   ├─ tool_result / attachment / progress
-//   └─ 规范化为 user-side tool_result messages
+//   └─ Normalize into user-side tool_result messages
 
 //   ↓
 
-下一轮 API 调用回流 transcript
+Feed the transcript back into the next API call
 ```
 
-### 工具并发执行策略
+### Tool concurrency strategy
 
 ```mermaid
 sequenceDiagram
@@ -285,7 +285,7 @@ sequenceDiagram
 
     LLM->>Scheduler: tool_use blocks
 
-    Scheduler->>Scheduler: 按 isConcurrencySafe 分批
+    Scheduler->>Scheduler: Batch by isConcurrencySafe
 
     par Parallel Batch
         Scheduler->>Executor: Read A
@@ -293,24 +293,24 @@ sequenceDiagram
         Scheduler->>Executor: Grep C
     end
 
-    Scheduler->>Executor: FileEdit D（串行）
+    Scheduler->>Executor: FileEdit D (serial)
 
     par Parallel Batch
         Scheduler->>Executor: Glob E
         Scheduler->>Executor: WebFetch F
     end
 
-    Scheduler->>Executor: Bash G（串行）
+    Scheduler->>Executor: Bash G (serial)
 
     Executor->>Transcript: tool_result
-    Transcript->>LLM: 回流下一轮上下文
+    Transcript->>LLM: Feed back into the next turn's context
 ```
 
-### 执行细节
+### Execution details
 
-- （1）工具池由 getTools() / assembleToolPool()组成， 内建工具与 MCP 工具合并后进入执行链。
-- （2）并发批次中的contextModifier延迟收集，待整个 batch 收口后统一 apply，避免上下文竞争。
-- （3）StreamingToolExecutor 以queued -> executing -> completed -> yielded跟踪状态，边接收流式 `tool_use`，边启动可并行工具。
+- (1) getTools() / assembleToolPool() constructs the tool pool. Built-in and MCP tools are merged before entering the execution chain.
+- (2) contextModifier updates from a concurrent batch are collected and deferred, then applied together after the entire batch finishes to avoid context races.
+- (3) StreamingToolExecutor tracks queued -> executing -> completed -> yielded states, launching tools that can run in parallel as streaming `tool_use` blocks arrive.
 
 ---
 
