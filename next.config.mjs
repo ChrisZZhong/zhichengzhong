@@ -16,18 +16,42 @@ const mergedJavaSpringPosts = {
   '2023-06-22-spring-cloud-config': '2023-06-19-monitoring#centralized-configuration-with-spring-cloud-config',
 };
 
+const mergedDistributedSystemPosts = {
+  '2023-06-10-api-gateway': '2024-08-05-Failures-in-distributed-systems#api-gateways-and-service-discovery',
+  '2023-06-13-cascading-failure': '2024-08-05-Failures-in-distributed-systems#cascading-failures-and-fault-tolerance',
+  '2023-06-16-fault-tolerance': '2024-08-05-Failures-in-distributed-systems#cascading-failures-and-fault-tolerance',
+  '2023-06-20-monolith-vs-microservices': '2024-08-05-Failures-in-distributed-systems#monolith-versus-microservices',
+  '2023-06-21-microservices-communicate': '2024-08-05-Failures-in-distributed-systems#synchronous-and-asynchronous-communication',
+  '2023-06-18-kafka': '2024-06-15-kafka-basic#topics-partitions-and-consumer-groups',
+  '2024-10-11-Dead-Letter-Queue': '2024-06-15-kafka-basic#dead-letter-queue-and-controlled-replay',
+  '2024-03-07-kafka-redis': '2025-03-04-Flink#kafka-and-redis-cache-projections',
+  '2023-06-14-debug-in-microservices': '2024-10-05-Splunk-Logging#incident-triage-with-logs-and-metrics',
+  '2023-06-15-elk': '2024-10-05-Splunk-Logging#centralized-logs-with-the-elastic-stack',
+  '2023-06-17-jenkins': '2023-06-25-CICDpipeline#jenkins-and-cicd',
+  '2024-02-16-knowledges': '2023-06-25-CICDpipeline#safe-rollouts-and-rollback',
+  '2024-03-04-docker': '2023-06-25-CICDpipeline#docker-and-compose',
+  '2024-09-04-Newman-Regression': '2023-06-25-CICDpipeline#newman-api-regression-reports',
+};
+
+function postRedirects(category, posts, aliases = [category]) {
+  return Object.entries(posts).flatMap(([source, destination]) =>
+    aliases.map((alias) => ({
+      source: `/blog/${alias}/${source}`,
+      destination: `/blog/${category}/${destination}`,
+      permanent: true,
+    }))
+  );
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: { outputFileTracingIncludes: { '/blog/*': ['./_posts/**/*.md'] } },
   transpilePackages: ['mermaid'],
   async redirects() {
-    return Object.entries(mergedJavaSpringPosts).flatMap(([source, destination]) =>
-      ['Java&Spring', 'Java%26Spring'].map((category) => ({
-        source: `/blog/${category}/${source}`,
-        destination: `/blog/Java%26Spring/${destination}`,
-        permanent: true,
-      }))
-    );
+    return [
+      ...postRedirects('Java%26Spring', mergedJavaSpringPosts, ['Java&Spring', 'Java%26Spring']),
+      ...postRedirects('DistributedSystem', mergedDistributedSystemPosts),
+    ];
   },
   webpack: (config) => {
     config.resolve.alias = {

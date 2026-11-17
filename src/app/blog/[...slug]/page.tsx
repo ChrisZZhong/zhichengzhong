@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import PasswordGate from '@/components/PasswordGate';
 import { accessCookie, passwordSalt, validAccessProof } from '@/lib/blog-access';
-import { getPostHref } from '@/lib/post-url';
+import { getBlogHref, getPostHref } from '@/lib/post-url';
 import { getPostBySlug, getAllPostsMeta } from '@/lib/posts';
 import BlogPostContent from '@/components/BlogPostContent';
 import TableOfContents from '@/components/TableOfContents';
@@ -105,13 +105,18 @@ export default function BlogPostPage({ params }: Props) {
         <article className="flex-1 min-w-0">
           {/* Post header */}
           <header className="mb-10">
-            <div className="flex items-center gap-3 mb-5">
-              <Link href={`/blog?tag=${encodeURIComponent(post.tag)}`}>
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+              <Link href={getBlogHref(post.tag)}>
                 <span className="tag-badge flex items-center gap-1">
                   <Tag size={10} />
                   {post.tag}
                 </span>
               </Link>
+              {post.subcategory && (
+                <Link href={getBlogHref(post.tag, post.subcategory)} className="tag-badge">
+                  {post.subcategory}
+                </Link>
+              )}
               <span className="text-text-muted text-sm flex items-center gap-1 font-mono">
                 <Calendar size={13} />
                 {post.date}
@@ -136,7 +141,7 @@ export default function BlogPostPage({ params }: Props) {
           <div className="mt-12 pt-8 border-t border-card-border">
             <div className="mb-8">
               <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Filed under</p>
-              <Link href="/blog">
+              <Link href={getBlogHref(post.tag)}>
                 <span className="tag-badge">{post.tag}</span>
               </Link>
             </div>

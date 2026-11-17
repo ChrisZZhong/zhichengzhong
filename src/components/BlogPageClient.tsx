@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { getPostHref } from '@/lib/post-url';
+import { getBlogHref, getPostHref } from '@/lib/post-url';
 import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash, LockKeyhole, Pin } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 import { useLanguage } from '@/context/LanguageContext';
@@ -16,6 +16,7 @@ const tx = {
     stats: (posts: number, tags: number) => `${posts} posts across ${tags} categories`,
     searchPlaceholder: 'Search posts...',
     tagsLabel: 'Tags',
+    subcategoriesLabel: 'Subcategories',
     allPosts: 'All Posts',
     showing: 'Showing',
     post: 'post',
@@ -36,6 +37,7 @@ const tx = {
     stats: (posts: number, tags: number) => `共 ${posts} 篇文章，${tags} 个分类`,
     searchPlaceholder: '搜索文章...',
     tagsLabel: '分类',
+    subcategoriesLabel: '子分类',
     allPosts: '全部文章',
     showing: '显示',
     post: '篇',
@@ -53,12 +55,13 @@ const tx = {
 interface Props {
   posts: PostMeta[];
   tags: string[];
+  activeTag?: string;
+  activeSubcategory?: string;
 }
 
-export default function BlogPageClient({ posts, tags }: Props) {
+export default function BlogPageClient({ posts, tags, activeTag, activeSubcategory }: Props) {
   const { lang } = useLanguage();
   const t = tx[lang];
-  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredPosts = useMemo(() => {
@@ -69,14 +72,19 @@ export default function BlogPageClient({ posts, tags }: Props) {
       result = result.filter((p) => p.tag === activeTag);
     }
 
+    if (activeSubcategory) {
+      result = result.filter((p) => p.subcategory === activeSubcategory);
+    }
+
     // Filter by search query
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.trim().toLowerCase();
       result = result.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
-          p.tag.toLowerCase().includes(q)
+          p.tag.toLowerCase().includes(q) ||
+          p.subcategory?.toLowerCase().includes(q)
       );
     }
 
@@ -86,23 +94,18 @@ export default function BlogPageClient({ posts, tags }: Props) {
       if (!a.pinned && b.pinned) return 1;
       return b.date.localeCompare(a.date);
     });
-  }, [posts, activeTag, searchQuery]);
+  }, [posts, activeTag, activeSubcategory, searchQuery]);
 
   // Group filtered posts by tag for the grouped view
   const groupedPosts = useMemo(() => {
     if (activeTag || searchQuery.trim()) return null; // flat view when filtered
     const groups: Record<string, PostMeta[]> = {};
-    const sorted = [...posts].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return b.date.localeCompare(a.date);
-    });
-    for (const post of sorted) {
+    for (const post of filteredPosts) {
       if (!groups[post.tag]) groups[post.tag] = [];
       groups[post.tag].push(post);
     }
     return groups;
-  }, [posts, activeTag, searchQuery]);
+  }, [activeTag, filteredPosts, searchQuery]);
 
   const pinnedPosts = useMemo(() => posts.filter((p) => p.pinned), [posts]);
 
@@ -114,6 +117,13 @@ export default function BlogPageClient({ posts, tags }: Props) {
     }
     return counts;
   }, [posts]);
+
+  const subcategoryCounts = new Map<string, number>();
+  for (const post of posts) {
+    if (post.tag === activeTag && post.subcategory) {
+      subcategoryCounts.set(post.subcategory, (subcategoryCounts.get(post.subcategory) ?? 0) + 1);
+    }
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-16">
@@ -211,10 +221,11 @@ export default function BlogPageClient({ posts, tags }: Props) {
                 <span>{t.tagsLabel}</span>
               </div>
 
-              <button
-                onClick={() => setActiveTag(null)}
+              <Link
+                href={getBlogHref()}
+                aria-current={!activeTag ? 'page' : undefined}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium mb-1 transition-all ${
-                  activeTag === null
+                  !activeTag
                     ? 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20'
                     : 'text-text-muted hover:text-text-primary hover:bg-white/5'
                 }`}
@@ -224,27 +235,46 @@ export default function BlogPageClient({ posts, tags }: Props) {
                   {t.allPosts}
                 </span>
                 <span className="text-xs font-mono opacity-60">{posts.length}</span>
-              </button>
+              </Link>
 
               <div className="mt-2 space-y-0.5">
                 {[...tags].sort((a, b) => (tagCounts[b] || 0) - (tagCounts[a] || 0)).map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      activeTag === tag
-                        ? 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20'
-                        : 'text-text-muted hover:text-text-primary hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 text-left">
-                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0" />
-                      <span className="truncate">{tag}</span>
-                    </span>
-                    <span className="text-xs font-mono opacity-60 flex-shrink-0">
-                      {tagCounts[tag] || 0}
-                    </span>
-                  </button>
+                  <div key={tag}>
+                    <Link
+                      href={getBlogHref(tag)}
+                      aria-current={activeTag === tag && !activeSubcategory ? 'page' : undefined}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        activeTag === tag
+                          ? 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20'
+                          : 'text-text-muted hover:text-text-primary hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 text-left">
+                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0" />
+                        <span className="truncate">{tag}</span>
+                      </span>
+                      <span className="text-xs font-mono opacity-60 flex-shrink-0">{tagCounts[tag] || 0}</span>
+                    </Link>
+                    {activeTag === tag && subcategoryCounts.size > 0 && (
+                      <nav aria-label={t.subcategoriesLabel} className="ml-4 my-1 pl-2 border-l border-card-border">
+                        {Array.from(subcategoryCounts).sort(([a], [b]) => a.localeCompare(b)).map(([subcategory, count]) => (
+                          <Link
+                            key={subcategory}
+                            href={getBlogHref(tag, subcategory)}
+                            aria-current={activeSubcategory === subcategory ? 'page' : undefined}
+                            className={`flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm ${
+                              activeSubcategory === subcategory
+                                ? 'bg-accent-cyan/10 text-accent-cyan font-semibold'
+                                : 'text-text-muted hover:text-text-primary hover:bg-white/5'
+                            }`}
+                          >
+                            <span>{subcategory}</span>
+                            <span className="text-xs font-mono opacity-60">{count}</span>
+                          </Link>
+                        ))}
+                      </nav>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -254,7 +284,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
           <div className="flex-1 min-w-0">
             {/* Active filter indicator */}
             {(activeTag || searchQuery) && (
-              <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-card-bg border border-card-border text-sm">
+              <div className="flex flex-wrap items-center gap-3 mb-6 p-3 rounded-xl bg-card-bg border border-card-border text-sm">
                 <span className="text-text-muted">{t.showing}</span>
                 <span className="font-semibold text-accent-cyan">
                   {filteredPosts.length} {filteredPosts.length === 1 ? t.post : t.posts}
@@ -262,6 +292,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
                 {activeTag && (
                   <span className="flex items-center gap-1 text-text-muted">
                     {t.in}<span className="tag-badge ml-1">{activeTag}</span>
+                    {activeSubcategory && <span className="tag-badge">{activeSubcategory}</span>}
                   </span>
                 )}
                 {searchQuery && (
@@ -269,12 +300,13 @@ export default function BlogPageClient({ posts, tags }: Props) {
                     {t.matching}&ldquo;<span className="text-text-primary">{searchQuery}</span>&rdquo;
                   </span>
                 )}
-                <button
-                  onClick={() => { setActiveTag(null); setSearchQuery(''); }}
+                <Link
+                  href={getBlogHref()}
+                  onClick={() => setSearchQuery('')}
                   className="ml-auto text-xs text-text-muted hover:text-accent-cyan transition-colors"
                 >
                   {t.clear}
-                </button>
+                </Link>
               </div>
             )}
 
@@ -301,15 +333,15 @@ export default function BlogPageClient({ posts, tags }: Props) {
                     <div key={tag}>
                       {/* Tag heading */}
                       <div className="flex items-center gap-3 mb-4">
-                        <button
-                          onClick={() => setActiveTag(tag)}
+                        <Link
+                          href={getBlogHref(tag)}
                           className="flex items-center gap-2 group"
                         >
                           <Tag size={14} className="text-accent-cyan" />
                           <h2 className="text-base font-bold text-text-primary group-hover:text-accent-cyan transition-colors">
                             {tag}
                           </h2>
-                        </button>
+                        </Link>
                         <span className="text-xs font-mono text-text-muted">
                           {t.postCount(tagPosts.length)}
                         </span>
@@ -354,7 +386,7 @@ function PostRow({ post }: { post: PostMeta }) {
         )}
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="hidden sm:block tag-badge">{post.tag}</span>
+        <span className="hidden sm:block tag-badge">{post.subcategory ?? post.tag}</span>
         <span className="text-xs text-text-muted font-mono flex items-center gap-1">
           <Calendar size={10} />
           {post.date}

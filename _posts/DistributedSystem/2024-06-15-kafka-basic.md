@@ -1,182 +1,79 @@
 ---
 layout: post
-title: "Kafka Basic"
+title: "Kafka: Partitions, Delivery Guarantees, and Dead-Letter Recovery"
 date: 2024-05-16
-description: "concepts you should know about kafka"
+description: "Follow a record from producer to consumer and design for hot partitions, retries, and replay."
 tag: Distributed System
-prime: false
+subcategory: Event Streaming
 ---
+
+Kafka stores events in a retained log. That makes it useful when several consumers need to read the same history at their own pace. RabbitMQ typically routes messages through exchanges to queues whose consumers acknowledge work. Both can run as clusters. Choose based on whether retained history and replay or queue routing and delivery behavior are central to the application.
 
 ## Kafka record
 
-an events contains:
+A record can contain a key, value, timestamp, and headers. Keys often represent an entity, such as an account. A null value can represent a tombstone on a compacted topic. Headers carry metadata such as a trace identifier or schema hint. Timestamps support time-based processing, while offsets give the position and order within a partition.
 
-1. `value`: `required`
-2. `key`: used to determine partition
-3. `timestamp`: order message
-4. `headers`: store HTTP headers and metadata
+## Topics, partitions, and consumer groups
 
-## message store process
+A topic contains one or more partitions. Each partition is an append-only log split into segment files. A producer chooses a partition, often based on a key, and uses cluster metadata to send the record to the leader. Keep a stable partitioning scheme when a consumer requires per-key order. Offsets from different partitions do not define a global order.
 
-two-steps:
+Each consumer group has its own offsets. Within a group, a partition is normally assigned to one consumer at a time. Adding consumers above the partition count leaves some idle. If a consumer leaves, the group reassigns its partitions. The next consumer resumes from the committed offset. A consumer that finishes a side effect and then crashes before committing can receive that record again. Reading does not delete records. Retention and compaction determine when the log drops old data.
 
-`Partition Determination`: message --hash(key)--> partition (preserve order at partition level)
+## Leader-follower replication
 
-`Broker Assignment`: find a broker holds that partition.
+The replication factor counts replicas of each partition. Followers fetch from the leader and can qualify for promotion when they stay in sync. Kafka's controller manages metadata and leadership changes. Kafka 4 uses KRaft for cluster metadata. ZooKeeper appears in older deployments and migration guides. [Kafka upgrade guide](https://kafka.apache.org/40/getting-started/upgrade/).
 
-mapping of partitions to brokers is managed by `kafka cluster metadata` -- `kafka controller` (a role within broker cluster). Producer use metadata to send message to broker that hold target partition.
+With `acks=all`, the leader waits for the in-sync replicas. Configure `min.insync.replicas` together with the replication factor to control when the broker can acknowledge a write. For example, with three replicas and a minimum of two in sync, the leader can reject writes rather than acknowledge them with only one replica in sync.
+
+## Throughput, retention, and hot partitions
+
+Dividing 1 GiB/s of disk bandwidth by 10 KiB per event gives roughly 105,000 events/s as a rough disk-only ceiling. Measure the real limit with replication, consumer fetches, network, serialization, and p99 latency in the workload. Similarly, a 10 KiB payload target is an application budget, not a Kafka limit. Batch records and tune `linger.ms`, `batch.size`, and `compression.type` together. Avro is a serialization format. Kafka's compression codec handles compressing batches.
+
+A hot key can overload one partition even with spare brokers. Adding partitions helps only when work can be distributed among them. A compound key or salted key can spread work at the cost of losing order across shards of the original key. If order matters, keep the key intact and use backpressure, reduce work per record, or redesign the aggregation. `retention.ms` and `retention.bytes` control log deletion for delete-policy topics. A compacted topic retains the latest values by key subject to its compaction and deletion policies.
+
+## Handling retries and errors
+
+### Producer retries
+
+Network or broker failures can leave a send outcome uncertain. Let the producer retry transient errors within a delivery timeout and keep idempotent production enabled. These settings are for the Java producer. With string keys and Avro values, use a string serializer for the key, an Avro serializer for the value, and supply the Schema Registry URL separately.
+
+```properties
+acks=all
+enable.idempotence=true
+delivery.timeout.ms=120000
+linger.ms=5
+batch.size=16384
+compression.type=lz4
+```
+
+Producer idempotence prevents duplicate appends from its protocol retries. If application code independently issues a second send for the same business event, use an event ID and a deduplication strategy. [Kafka producer configuration](https://kafka.apache.org/40/configuration/producer-configs/).
+
+### Consumer retries
+
+Commit progress after processing or after durably handing off the record. Retry transient failures with a limit. Malformed records and permanent validation failures can go directly to a dead-letter topic. Moving a failed record to a separate retry topic lets the main consumer keep going, but events for the same entity may then be processed out of order. If preserving order is essential, pause or retry on the original partition and account for the resulting lag.
+
+## Dead-letter queue and controlled replay
+
+A handler service can use a Spring Kafka listener to persist failed events and a worker to reconstruct and republish eligible events to a configured retry topic. Store the original bytes when deserialization fails. If the event was converted to JSON, keep enough schema information to rebuild the correct Avro type later.
 
 ```mermaid
-flowchart LR
-    A[message]
-    B[partition Id]
-    C[kafka controller]
-    D[broker]
-
-    A -->|"hash(key)"| B
-    B <-->|get broker config| C
-    B -->|save to| D
+flowchart TD
+    Input["Source event"] --> Consumer["Service consumer"]
+    Consumer -->|Retries exhausted| DLT["Dead-letter topic"]
+    DLT --> Store["Persist payload and metadata"]
+    Store -->|Approved and eligible| Worker["Claim record and rebuild event"]
+    Worker --> Retry["Publish to mapped retry topic"]
+    Retry -->|Broker acknowledges| Sent["Mark as sent"]
+    Retry -->|Publish fails| Store
 ```
 
-## partition
+| Keep with the failed event | Why |
+| --- | --- |
+| Original topic, partition, offset, event ID | Locate and deduplicate the event. |
+| Failure type, reason, and source service | Distinguish transient failure, invalid data, and deserialization errors. |
+| Schema ID or name and version | Reconstruct the record using the writer schema. |
+| Status, attempt count, and timestamps | Bound retries and give operators an audit trail. |
 
-Each partition in Kafka functions essentially as an `append-only` log file. Messages are sequentially added to the end of this log, which is why Kafka is commonly described as a distributed commit log.
+Claim eligible rows atomically if multiple workers poll the table. For a limit of three retries, allow attempts while the retry count is below three. A crash after publishing but before marking the row as sent can cause duplicate replay. Keep a stable ID and make the receiver idempotent. A broker acknowledgement means the record was published, while a separate signal is needed to know the business operation succeeded. [Further reading on Kafka dead-letter queues](https://www.kai-waehner.de/blog/2022/05/30/error-handling-via-dead-letter-queue-in-apache-kafka/).
 
-1. `Immutability`: can not be `altered` or `deleted`. avoids consistency issues, speeds up recovery processes
-2. `Efficiency`: append at end --> minimizes disk seek times
-3. `Scalability`: partition can be horizontal scaling.
-
-offset in partition --> identify message position.
-
-## leader-follower Replication
-
-`leader`: handle all read and write, (leader assigned by cluster controller) --> distribute evenly across
-
-`Follower Replication`: receive message from leader replica
-
-`Synchronization and Consistency`: one of the follower replicas that has been fully synced can be quickly promoted to be the new leader, minimizing downtime and data loss.
-
-`Controller's Role in Replication`: controller managed the `health` of all brokers and `leadership` & `dynamics` (based on `zookeeper`)
-
-## Scaling - QPS per broker
-
-Max disk write speed ≈ 1 GB/s
-Message size = 10 KB
-Max messages/sec ≈ 1 GB / 10 KB ≈ 102,400 messages/sec
-
-A single broker on high-performance hardware can handle roughly 100k messages per second if each message is 10KB.
-
-**scaling：**
-
-1. add more brokers
-
-2. partition strategy
-
-### Hot partitions
-
-1. `Random partitioning with no key`: even disribution, but lose the ability to guarantee order of messages
-
-2. `Random salting`: We can add a random number or timestamp to the ad ID when generating the partition key.
-
-3. `Use a compound key`: ID + Geo
-
-4. `Back pressure`: slow down the producer
-
-## Fault Tolerance and Durability
-
-Setting `acks=all` ensures that the message is acknowledged only when all replicas have received it, guaranteeing maximum durability. 
-
-`acks=1` by default
-
-### what happens when a consumer goes down?
-
-1. `Offset Management`: commit offsets after process a message
-
-2. `Rebalancing`: When part of a consumer group, if one consumer goes down, Kafka will redistribute the partitions among the remaining consumers so that all partitions are still being processed.
-
-## Handling Retries and Errors
-
-### Producer Retries
-
-`network issues`, `broker unavailability`, or `transient failures`
-
-```java
-import com.zhicheng.avro.User;
-import org.apache.kafka.clients.producer.*;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-
-import java.util.Properties;
-
-public class AvroKafkaProducer {
-    public static void main(String[] args) {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
-        // 使用 Confluent 的 Avro 序列化器
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-
-        // Schema Registry 地址（必须）
-        props.put("schema.registry.url", "https://localhost:8081");
-
-        // 幂等性与重试配置
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
-        props.put(ProducerConfig.RETRIES_CONFIG, 5);
-        props.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, 100);
-
-        KafkaProducer<Object, Object> producer = new KafkaProducer<>(props);
-
-        // 构造 Avro 对象
-        User user = User.newBuilder()
-                .setId("u123")
-                .setName("Zhicheng")
-                .setAge(30)
-                .build();
-
-        ProducerRecord<Object, Object> record = new ProducerRecord<>("user-topic", user.getId(), user);
-        producer.send(record, (metadata, exception) -> {
-            if (exception == null) {
-                System.out.printf("Sent to topic %s partition %d offset %d%n",
-                        metadata.topic(), metadata.partition(), metadata.offset());
-            } else {
-                exception.printStackTrace();
-            }
-        });
-
-        producer.flush();
-        producer.close();
-    }
-}
-
-```
-
-### Consumer Retries
-
-One common pattern is to set up a custom topic that we can move failed messages to and then have a separate consumer that processes these messages.
-
-If a given message is retried too many times, we can move it to a dead letter queue (DLQ). DLQs are just a place to store failed messages so that we can investigate them later.
-
-## Performance Optimizations
-
-`batch messages in the producer` before sending them to Kafka
-
-```javaScript
-const producer = kafka.producer({
-  batch: {
-    maxSize: 16384, // Maximum batch size in bytes
-    maxTime: 100,   // Maximum time to wait before sending a batch
-  }
-});
-```
-
-`compressing the messages`: This can be done by setting the compression option in the producer configuration. Kafka supports several compression algorithms, including GZIP, Snappy, and LZ4
-
-```javaScript
-const producer = kafka.producer({
-  compression: CompressionTypes.GZIP,
-});
-```
-
-## Retention Policies
-
-Kafka topics have a retention policy that determines how long messages are retained in the log. This is configured via the retention.ms and retention.bytes settings. The default retention policy is to keep messages for 7 days.
+For cache projections, reconciliation and stateful stream processing, continue with [Event Processing with Kafka, Redis, and Flink](/blog/DistributedSystem/2025-03-04-Flink).

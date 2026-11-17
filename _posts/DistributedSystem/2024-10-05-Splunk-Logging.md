@@ -1,154 +1,71 @@
 ---
 layout: post
-title: Debug in distributed system (Splunk)
+title: "Troubleshooting Distributed Services with Logs, Metrics, and Traces"
 date: 2024-05-21
-description: "Splunk"
+description: "Narrow an incident by time and service, follow a trace, and investigate with Elastic or reusable Splunk searches."
 tag: Distributed System
+subcategory: Operations and Delivery
 ---
+
+Suppose checkout errors rise after a deployment. First identify the affected time window, region, service, and version. Then follow one failing request through the gateway and downstream services. Use request rate, error rate, and latency to see whether that request represents a wider problem.
+
+## Incident triage with logs and metrics
+
+1. Start with the symptom. Compare error rates and p95 latency with the preceding baseline. Counts alone can be misleading after a change in traffic volume.
+2. Split by endpoint, deployment version, or region to locate the difference. Check dependency timeouts and resource saturation alongside the application graphs.
+3. Find one representative failure. Look for a structured error event and its request or trace ID. Inspect the earliest relevant failure in the flow, including the downstream response.
+4. Confirm the hypothesis against a healthy request or another region. After mitigation, check that error and latency metrics recover.
+
+During development, local logs are often sufficient. Across instances, centralize structured logs with time, service, environment, version, trace ID, and a stable error category. Use health endpoints and metrics, such as Spring Boot Actuator, to track conditions that individual logs cannot summarize. [Spring Boot service monitoring](/blog/Java%26Spring/2023-06-19-monitoring#monitoring-with-actuator-metrics-and-logs).
+
+## Distributed tracing
+
+A trace groups spans for one operation. Every span has a trace ID and its own span ID. A parent span ID connects related work, and spans record duration and attributes such as service name or operation. Propagate the trace context across HTTP calls and messaging boundaries. For asynchronous work that does not form a simple parent-child chain, a span link can represent the relationship.
+
+In the checkout example, a gateway span might show a slow inventory call. Follow the inventory span to distinguish time spent in its own code from time spent waiting on its database. Add the trace ID to structured logs to pivot from the timeline to the error detail. Keep high-cardinality fields such as trace IDs in logs or traces rather than metric labels. [OpenTelemetry traces](https://opentelemetry.io/docs/concepts/signals/traces/).
+
+## Centralized logs with the Elastic Stack
+
+A collector such as Beats can ship logs. Logstash parses, enriches, and routes events. Elasticsearch indexes them for search and aggregation. Kibana provides filtered inspection, charts, and dashboards. Validate field types, time zones, and retention so the dashboards reflect comparable inputs across services.
 
 ## Splunk
 
-Splunk
+The examples use a sample index and field names. Adapt them to your environment. Each search assumes the time picker is set to the interval under investigation and that duration is recorded in milliseconds.
 
-````
-index=application_na sourcetype=fs_newarch_qa source=*gfs-feaid-services*
+**Request rate.** Count a `START` event once per request. If collecting duplicate events, deduplicate by a stable request ID before calculating a rate.
 
-Response Time: index=application_na sourcetype=fs_newarch_prod source=*fs-utilities*  eventType=END OR eventType=ERROR | timechart avg(duration)
+```spl
+index=app_logs service=checkout eventType=START
+| eval request=1
+| timechart span=1m per_second(request) AS requests_per_second
+```
 
-tps:
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search*  eventType=START | eval tps=1 | timechart per_second(tps)
+**Error distribution and latency.** Use a consistent set of outcomes. Include both successful and failed completions where measuring client-visible latency.
 
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* eventType=ERROR | stats count by error.message
+```spl
+index=app_logs service=checkout eventType=ERROR
+| stats count AS errors by endpoint error_category
+| sort - errors
+```
 
-sourcetype=fs_newarch_prod /fs/offers/v1/retrieveOffers level=ERROR source="*gfs-offers-services*"
+```spl
+index=app_logs service=checkout eventType IN (END, ERROR)
+| timechart span=1m avg(duration_ms) AS mean_ms p95(duration_ms) AS p95_ms by region
+```
 
+**Locate a specific request or compare versions.**
 
+```spl
+index=app_logs trace_id="sample-trace-id"
+| sort 0 _time
+| table _time service eventType duration_ms error_category
+```
 
-Find what is the client from the time range:
-sourcetype=fs_newarch_prod action=*fs.offers.retrieveOffers* source="*gfs-offers-services*" | stats count by common.clientName
+```spl
+index=app_logs service=checkout eventType IN (END, ERROR)
+| eval failed=if(eventType="ERROR", 1, 0)
+| stats count AS total sum(failed) AS errors by version region
+| eval error_pct=round(100 * errors / total, 2)
+```
 
-Show what most of the error is from this client :
-sourcetype=fs_newarch_prod action=*fs.offers.retrieveOffers* source="*gfs-offers-services*"  "common.clientName"="DGPrdODS-PSCU.fdclientcenter.com" eventType = ERROR | stats count by error.message
-
-Show the avg time of that service from that client:
-sourcetype=fs_newarch_prod action=*fs.offers.retrieveOffers* source="*gfs-offers-services*"  "common.clientName"="DGPrdODS-PSCU.fdclientcenter.com" eventType = ERROR OR eventType = END | timechart avg(duration)
-
-leSplunk Queries
-
-Version:
-index=application_na sourcetype=fs_newarch_cat source=*gfs-offers-odm* caller=RestServletWriter "Writing application/json response" | rex field=_raw "^(?:[^,\n]*,){8}(?P<version>[^,]+)" | table host version | sort host | dedup host
-
-index=application_na sourcetype=fs_newarch_prod service=fs.maintenance.customnewaccount eventType IN (START, ERROR, END, VALIDATION, AUDIT)
-
-index=application_na sourcetype=fs_newarch_qa source=*fs-proxy* eventType=VALIDATION serviceUrl=*/fs/offersodm/v1*
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host=L3BVAP1246 eventType=ERROR | stats count by error.message
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host=L3BVAP1246 eventType=* | stats count by eventType
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host=L3BVAP1246 (*error* OR *exception* ) NOT "RECORD NOT FOUND" NOT "Missing critical AUDIT" NOT "Overriding cid with the requests clientName/certName"
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* eventType IN (END, ERROR) common.service=fs.account.cardIssuanceTracking
-| timechart p95(duration)
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* eventType IN (END, ERROR) common.service=fs.account.cardIssuanceTracking
-| timechart p95(duration)
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host=*l1pvap1155* eventType=ERROR | timechart span=1s count by error.message
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host=*l1pvap1155*  ( eventType=ERROR OR eventType=END )  | timechart span=1s count
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host=*l1pvap1155*  ( eventType=ERROR OR eventType=END )  | timechart avg(duration)
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-memos* host=*L3PVAP1397*  | timechart span=1s count by eventType
-
-index=application_na sourcetype=fs_newarch_cat action=fs.archive.asynccreate | timechart count span=1m
-
-Audit delete
-index=application_na sourcetype=fs_newarch_qa source=gfs-audit-delete-batch-1 ("caller=DB2Base" OR "caller=ApiServiceAuditDao" OR "caller=AuditDeleteBatchScheduler" OR service="AuditDeleteBatchScheduler")
-
-Alert:
-index=application_na sourcetype=fs_newarch_qa source=gfs-audit-delete-batch-1 service="AuditDeleteBatchScheduler" eventType IN (END, ERROR) | table eventType, detail, duration, eventTime
-
-index=datapower_na "SalesAndProductManagement"
-
-"/SalesAndProductManagement/Originations/"
-
-index=datapower_na "UP MEMBER COUNT in PRIMARY LBG FS_NSA_Originations_LBG IS 0. IT IS LESS THAN MINIMUM UP COUNT - 1. BACKEND CALLS WILL BE ROUTED TO FAILOVER LBG - FS_NSA_Originations_Failover_LBG"
-
-index=datapower_na host=X*CPIR* "*:500 Internal*"  client_ip_addr=*   | eval error_500=1 | timechart  span=1m per_second(error_500) AS 500_responses
-
-index=datapower_na host=X*CPIR* "*:500 Internal*"  client_ip_addr=*   | eval error_500=1 | timechart  span=1m per_second(error_500) AS 500_responses
-
-tps vs response
-index=datapower_na host_env=prod host=*Issuing-T1R* latency | dedup gtid | eval tps=1 | timechart span=1s per_second(tps) avg(resp_xmit)
-
-Trafffic
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-maint* host=l3pvap1192 eventType=* | timechart span=1s count
-
-Error check
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-maint* (*error* OR *exception* ) NOT "RECORD NOT FOUND" NOT "Missing critical AUDIT" NOT "Overriding cid with the requests clientName/certName" NOT "INVALID-ACCT-EXTERNAL-STATUS" host IN (l3pvap1192,l3pvap1193,l3pvap1705)
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-maint* (*error* OR *exception* ) NOT "RECORD NOT FOUND" NOT "Missing critical AUDIT" NOT "Overriding cid with the requests clientName/certName" NOT "INVALID-ACCT-EXTERNAL-STATUS" host IN (l3pvap1192,l3pvap1193,l3pvap1705) eventType=* | stats count by error.message
-
-Response time
-index=application_na sourcetype=fs_newarch_prod source=*fs-utilities*  eventType=END OR eventType=ERROR | timechart avg(duration)
-
-TPS
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-search* host IN (r3pvap1377, l3pvap1194, l3pvap1195, l3pvap1176, l3pvap1177) eventType=START | eval tps=1 | timechart per_second(tps)
-
-Cluster traffic (OM vs CH)
-index=application_na sourcetype=fs_newarch_prod source=*fs-account-main* | eval cluster=case(like(host, "l1%"), "Omaha", like(host, "l3%"), "Chandler") | timechart usenull=f count by cluster
-
-index=application_na sourcetype=*prod* source=*gfs-offers-services* eventType=E*
-| spath | eval cluster = case( like(host, "%prod-azc%" ), "central", like(host, "%prod-aze%") , "east") | timechart  span=1m count by cluster
-
-Response
-index=datapower_na host_env="prod" */fs/offers/v1/retrieveOffers* resp_xmit>3000
-
-index=datapower_na host_env="prod" */fs/* resp_xmit>7000 | stats count by req_uri
-
-Good Reference
-index=application_na sourcetype=fs_newarch_prod source=*fs-utilities* eventType=* | eval env=case(like(host, "l%"), "linux", like(host, "fs-utilities%"), "openshift") | timechart count by env
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-utilities* eventType=ERROR | eval env=case(like(host, "l%"), "linux", like(host, "fs-utilities-prod%"), "openshift") | timechart count by env
-
-index=application_na sourcetype=fs_newarch_prod source=*fs-utilities* eventType=ERROR "error.message"="RECORD NOT FOUND" | eval env=case(like(host, "l%"), "linux", like(host, "fs-utilities-prod%"), "openshift") | timechart span=1m count by env
-
-ERROR group by env
-index=application_na sourcetype=fs_newarch_prod source=*fs-utilities* eventType=ERROR | eval env=case(like(host, "l%"), "linux", like(host, "fs-utilities%"), "openshift") | stats count by env, error.message
-
-ODS
-index=gfsauth_na ```Always used for ODS``` AND
-sourcetype=gfsauth_prod ```Production=gfsauth_prod``` ```CAT=gfsauth_cat``` AND
-eventType=ODS ```Always used for ODS``` AND
-common.cycle=N ```Needs to exist in the sourcetype selection``` AND
-transaction.terminalId="MQ8C"
-
-index=gfsauth_na ```Always used for ODS``` AND
-sourcetype=gfsauth_prod ```Production=gfsauth_prod``` ```CAT=gfsauth_cat``` AND
-eventType=ODS ```Always used for ODS``` AND
-common.cycle=N ```Needs to exist in the sourcetype selection``` AND
-transaction.terminalId="MQ8C" AND
-transaction.tranDesc=*PCF*
-
-index=gfsauth_na ```Always used for ODS``` AND
-sourcetype=gfsauth_prod ```Production=gfsauth_prod``` ```CAT=gfsauth_cat``` AND
-eventType=ODS ```Always used for ODS``` AND
-common.cycle=N ```Needs to exist in the sourcetype selection``` AND
-transaction.terminalId="MQ8C" AND
-transaction.tranDesc=*PCF* AND
-error.message=*"RECORD NOT FOUND"* | stats count by error.cause
-
-index=gfsauth_na ```Always used for ODS``` AND
-sourcetype=gfsauth_prod ```Production=gfsauth_prod``` ```CAT=gfsauth_cat``` AND
-eventType=ODS ```Always used for ODS``` AND
-common.cycle=* ```Needs to exist in the sourcetype selection``` AND
-transaction.terminalId="MQ8C" AND
-transaction.tranDesc=*PCF* AND
-error.message=*"RECORD NOT FOUND"* | stats count by error.cause, common.cycle
-````
-
-index=application_na sourcetype=fs_newarch_cat source=_fs-internal-services_ host=_l1cvap1047_ eventType=ERROR | stats count by error.message
-
-index=application_na sourcetype=fs_newarch_cat source=_fs-internal-services_ host=_l1cvap1047_ eventType=ERROR | stats count by eventType
+Use the same filters when comparing regions or releases. The older examples use host patterns, request paths, client names, and raw messages as fallbacks. Prefer explicit fields such as `region`, `version`, `endpoint`, and `client_id` so comparisons do not depend on naming conventions or fragile text extraction. Use exact filters when tracing a specific client and keep raw payloads out of shared reports.

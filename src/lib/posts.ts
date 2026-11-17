@@ -5,14 +5,8 @@ import type { Post, PostMeta } from '@/types/post';
 
 const postsDirectory = path.join(process.cwd(), '_posts');
 
-/** Sanitize a raw tag value (strip quotes, \r, leading/trailing spaces) */
-function normalizeTag(raw: unknown): string {
-  if (!raw) return 'Uncategorized';
-  return String(raw)
-    .replace(/\r/g, '')
-    .trim()
-    .replace(/^["']|["']$/g, '')
-    .trim() || 'Uncategorized';
+function normalizeSubcategory(value: unknown): string | undefined {
+  return typeof value === 'string' ? value.trim() || undefined : undefined;
 }
 
 /** Safely parse a date from frontmatter into "YYYY-MM-DD" string.
@@ -76,6 +70,7 @@ export function getAllPostsMeta(): PostMeta[] {
           date: normalizeDate(data.date),
           description: data.description || '',
           tag,
+          subcategory: normalizeSubcategory(data.subcategory),
           protected: tag === 'Interviews' || data.password === 'interviews',
           pinned: data.pinned === true,
         } as PostMeta;
@@ -101,6 +96,7 @@ export function getPostBySlug(slug: string): Post | null {
       date: normalizeDate(data.date),
       description: data.description || '',
       tag,
+      subcategory: normalizeSubcategory(data.subcategory),
       protected: tag === 'Interviews' || data.password === 'interviews',
       content,
     };
