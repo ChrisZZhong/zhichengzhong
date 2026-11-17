@@ -19,30 +19,26 @@ prime: false
 
 **一句话：**ECWS 是银行和 credit unions 使用的支付编排服务。我重构的是 orchestration 模块，并把 receipt email 从支付主流程拆成异步通知链路。
 
-### 1.1 白板上画这两条线
+### 1.1 迁移前后，一笔支付请求怎么走？
+
+| 阶段 | 从客户端到 Core 的请求链路 |
+|---|---|
+| 迁移前 | Request → DataPower（DP）→ ECWS → Core |
+| 迁移后，客户端发 SOAP | SOAP 请求 → DP → SOAP-to-REST 翻译层（转为 REST）→ `fs-internal-service` → Core |
+| 迁移后，客户端发 REST | REST 请求 → DP → 保持 REST 原样转发 → `fs-internal-service` → Core |
+
+DP 继续负责鉴权、限流和路由。原先由 ECWS 承担的支付编排现在由 `fs-internal-service` 负责。两个入口交给它的都是 REST 请求，所以仍使用 SOAP 的客户也可以调用新服务。
+
+**收到 Core 响应后，支付记录与邮件通知怎么衔接？**
 
 ```text
-请求主链路
-
-Legacy SOAP Client
+Core / Mainframe 的支付结果经 Core 返回 fs-internal-service
     ↓
-DataPower：鉴权、限流、routing
-    ↓
-独立 SOAP-to-REST Translator
-    ↓
-fs-internal-services：我重构的 orchestration
-    ↓
-Core APIs → Mainframe 支付能力
-    ↓
-结果经 Core 返回 orchestration
-    ↓
-Oracle 本地事务：workflow record + outbox
-
-通知链路
-
-已提交的 outbox → CDC → Kafka → Email Consumer → 邮件服务
-                                     ↓ 失败
-                              retry → DLT → controlled replay
+Oracle 本地事务：保存 workflow record；符合通知条件时一并写入 outbox
+    ↓ 提交后
+CDC → Kafka → Email Consumer → 邮件服务
+                  ↓ 发送失败
+             retry → DLT → controlled replay
 ```
 
 图中的 outbox 写入按实际通知资格执行；收到 response 本身不代表付款成功。具体响应码规则未在现有材料里列出。
@@ -50,7 +46,7 @@ Oracle 本地事务：workflow record + outbox
 **先记住五件事：**
 
 1. DataPower 与 SOAP-to-REST Translator 是不同组件；转换由后者完成。
-2. 我负责 `fs-internal-services` 和通知应用链路，Core/Mainframe、Kafka/CDC 平台由其他团队负责。
+2. 我负责 `fs-internal-service` 和通知应用链路，Core/Mainframe、Kafka/CDC 平台由其他团队负责。
 3. Oracle 本地事务从拿到 Core/Mainframe response 后开始，把 workflow record 和 outbox 一起写入；不跨越之前的远程等待。
 4. Kafka 存的是通知事件，付款主流程不需要等邮件服务完成发送。
 5. Core 超时结果未知，或 Mainframe 成功但本地持久化失败，由既有 reconciliation service 核实修正；它不是邮件 retry/DLT，也不是我实现的服务。
@@ -85,7 +81,7 @@ Oracle 本地事务：workflow record + outbox
 
 | 我的范围 | 可以怎么说 | 继续追问时从哪里展开 |
 |---|---|---|
-| 编排模块重构 | “I refactored the orchestration module into `fs-internal-services`.” | 为什么划这个服务边界；请求如何经过下游；本地状态如何保存 |
+| 编排模块重构 | “I refactored the orchestration module into `fs-internal-service`.” | 为什么划这个服务边界；请求如何经过下游；本地状态如何保存 |
 | 邮件解耦 | “I separated receipt email delivery from the payment workflow.” | 为什么异步；怎样避免本地状态与事件的双写缺口 |
 | 通知应用侧集成 | “I worked on the outbox/CDC integration and the email consumer.” | 输入输出契约、事件身份、发送和失败处理 |
 | retry / DLT / replay | “I implemented the application-side recovery path for notification failures.” | 暂态与永久错误、退避/jitter、重放如何保持业务身份 |
@@ -361,7 +357,7 @@ Mock 适合验证业务分支；真实事务、唯一约束、重投和框架交
 
 **设计推演：**优先兼容性增量，先部署能读新旧格式的一侧，验证缺字段/未知字段/错误枚举；重放旧事件也要能处理。实际 schema 和发布先后顺序尚未补全，不把这些原则改写成当年的上线记录。
 
-**SOAP → REST 的真实背景：**有独立 Translator，旧版本保留并给客户迁移窗口；DP 负责鉴权、限流与 routing。具体分批客户、回滚机制和是否全部迁完未确认。
+**SOAP → REST 的真实背景：**SOAP 请求由独立 Translator 转成 REST，原生 REST 请求保持原样，两者都交给 `fs-internal-service` 编排。旧版本保留并给客户迁移窗口；DP 负责鉴权、限流与 routing。具体分批客户、回滚机制和是否全部迁完未确认。
 
 ### Q17. Payment succeeded, but the customer did not get the email. How do you investigate?
 
