@@ -21,37 +21,36 @@ prime: false
 
 ### 1.1 迁移前后，一笔支付请求怎么走？
 
+**迁移前：支付请求经过 ECWS**
+
 ```mermaid
-flowchart TB
-    subgraph legacy["迁移前 · ECWS 编排"]
-        oldReq["客户端请求"] --> oldDP["DataPower（DP）"]
-        oldDP --> ecws["ECWS"] --> oldCore["Core"]
-    end
-
-    subgraph migrated["迁移后 · 新服务编排"]
-        req["客户端请求"] --> dp["DataPower（DP）"]
-        dp -->|SOAP 请求| translator["SOAP 转 REST"]
-        translator -->|转换后的 REST| service["fs-internal-service"]
-        dp -->|REST 请求原样转发| service
-        service --> core["Core"]
-    end
+flowchart TD
+    req["客户端请求"] --> dp["DataPower（DP）"]
+    dp --> ecws["ECWS"]
+    ecws --> core["Core"]
 ```
 
-DP 继续负责鉴权、限流和路由。原先由 ECWS 承担的支付编排现在由 `fs-internal-service` 负责。两个入口交给它的都是 REST 请求，所以仍使用 SOAP 的客户也可以调用新服务。
+**迁移后：支付编排与异步回执邮件**
 
-**收到 Core 响应后，支付记录与邮件通知怎么衔接？**
-
-```text
-Core / Mainframe 的支付结果经 Core 返回 fs-internal-service
-    ↓
-Oracle 本地事务：保存 workflow record；符合通知条件时一并写入 outbox
-    ↓ 提交后
-CDC → Kafka → Email Consumer → 邮件服务
-                  ↓ 发送失败
-             retry → DLT → controlled replay
+```mermaid
+flowchart TD
+    req["客户端请求"] --> dp["DataPower（DP）"]
+    dp -->|SOAP| translate["SOAP 转 REST"]
+    translate --> service["fs-internal-service"]
+    dp -->|REST 原样转发| service
+    service --> core["Core 调用 Mainframe"]
+    core -->|返回支付结果| result["编排服务处理响应"]
+    result --> txn["Oracle 本地事务<br/>保存 workflow record<br/>符合通知条件时一并写 outbox"]
+    txn -->|事务已提交且有通知事件| cdc["CDC"]
+    cdc --> kafka["Kafka"]
+    kafka --> consumer["Email Consumer"]
+    consumer --> mail["邮件服务"]
+    mail -->|发送失败，可重试| retry["重试"]
+    retry -->|重试耗尽| dlt["死信主题（DLT）"]
+    dlt --> replay["受控重放"]
 ```
 
-图中的 outbox 写入按实际通知资格执行；收到 response 本身不代表付款成功。具体响应码规则未在现有材料里列出。
+DP 负责鉴权、限流和路由。两种请求最终都以 REST 进入 `fs-internal-service`。编排服务收到 Core 响应后保存流程记录，并按通知条件决定是否写入 outbox。事务提交后，CDC 才能读到通知事件；支付请求无需等待回执邮件发出。
 
 **先记住五件事：**
 
