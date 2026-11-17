@@ -76,6 +76,7 @@ export function getAllPostsMeta(): PostMeta[] {
           date: normalizeDate(data.date),
           description: data.description || '',
           tag,
+          protected: tag === 'Interviews' || data.password === 'interviews',
           pinned: data.pinned === true,
         } as PostMeta;
       } catch {
@@ -88,6 +89,8 @@ export function getAllPostsMeta(): PostMeta[] {
 export function getPostBySlug(slug: string): Post | null {
   // slug format: "<TagFolder>/<filename-without-.md>"
   try {
+    const parts = slug.split('/');
+    if (parts.length !== 2 || parts.some(part => !part || part.startsWith('.') || part.includes('\\'))) return null;
     const filePath = path.join(postsDirectory, `${slug}.md`);
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const { data, content } = matter(fileContents);
@@ -98,6 +101,7 @@ export function getPostBySlug(slug: string): Post | null {
       date: normalizeDate(data.date),
       description: data.description || '',
       tag,
+      protected: tag === 'Interviews' || data.password === 'interviews',
       content,
     };
   } catch {

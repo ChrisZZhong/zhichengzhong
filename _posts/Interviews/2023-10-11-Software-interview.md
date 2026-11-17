@@ -1,4 +1,5 @@
 ---
+password: interviews
 layout: post
 title: "Java Backend Interview problems"
 date: 2023-10-11

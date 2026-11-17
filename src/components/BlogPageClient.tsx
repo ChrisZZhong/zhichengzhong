@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { getPostHref } from '@/lib/post-url';
-import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash, Pin } from 'lucide-react';
+import { Calendar, Tag, Search, BookOpen, ChevronRight, Hash, LockKeyhole, Pin } from 'lucide-react';
 import type { PostMeta } from '@/types/post';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -171,7 +171,7 @@ export default function BlogPageClient({ posts, tags }: Props) {
                     <Pin size={13} className="text-accent-cyan -rotate-45 opacity-70" />
                   </div>
                   <h3 className="font-bold text-text-primary text-sm leading-snug group-hover:text-accent-cyan transition-colors line-clamp-2 relative">
-                    {post.title}
+                    {post.protected && <LockKeyhole size={13} aria-label="Password protected" className="inline mr-1.5" />}{post.title}
                   </h3>
                   {post.description && post.description !== post.title && (
                     <p className="text-xs text-text-muted line-clamp-2 relative">{post.description}</p>
@@ -346,7 +346,7 @@ function PostRow({ post }: { post: PostMeta }) {
             <Pin size={11} className="text-accent-cyan flex-shrink-0 -rotate-45" />
           )}
           <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-cyan transition-colors truncate">
-            {post.title}
+            {post.protected && <LockKeyhole size={13} aria-label="Password protected" className="inline mr-1.5" />}{post.title}
           </h3>
         </div>
         {post.description && post.description !== post.title && (

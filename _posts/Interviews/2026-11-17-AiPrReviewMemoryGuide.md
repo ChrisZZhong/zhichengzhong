@@ -1,4 +1,5 @@
 ---
+password: interviews
 layout: post
 title: "AI PR Review — 从读懂代码到判断能否上线"
 date: "2026-11-17"

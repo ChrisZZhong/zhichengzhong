@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import PasswordGate from '@/components/PasswordGate';
+import { accessCookie, passwordSalt, validAccessProof } from '@/lib/blog-access';
 import { getPostHref } from '@/lib/post-url';
-import { getAllPostSlugs, getPostBySlug, getAllPostsMeta } from '@/lib/posts';
+import { getPostBySlug, getAllPostsMeta } from '@/lib/posts';
 import BlogPostContent from '@/components/BlogPostContent';
 import TableOfContents from '@/components/TableOfContents';
 import type { TocHeading } from '@/components/TableOfContents';
@@ -49,10 +52,7 @@ function extractHeadings(content: string): TocHeading[] {
   return headings;
 }
 
-export async function generateStaticParams() {
-  const slugs = getAllPostSlugs();
-  return slugs.map((slug) => ({ slug: slug.split('/') }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = paramsToSlug(params.slug);
@@ -61,6 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${post.title} | Zhicheng Zhong`,
     description: post.description || post.title,
+    ...(post.protected && { robots: { index: false } }),
   };
 }
 
@@ -69,7 +70,8 @@ export default function BlogPostPage({ params }: Props) {
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const headings = extractHeadings(post.content);
+  const locked = post.protected && !validAccessProof(cookies().get(accessCookie)?.value);
+  const headings = locked ? [] : extractHeadings(post.content);
 
   // Prev / next within the same tag
   const allPosts = getAllPostsMeta()
@@ -128,7 +130,7 @@ export default function BlogPostPage({ params }: Props) {
           </header>
 
           {/* Content */}
-          <BlogPostContent content={post.content} />
+          {locked ? <PasswordGate salt={passwordSalt} /> : <BlogPostContent content={post.content} />}
 
           {/* Footer */}
           <div className="mt-12 pt-8 border-t border-card-border">

@@ -1,4 +1,5 @@
 ---
+password: interviews
 layout: post
 title: "Java FullStack Interview Knowledge"
 date: 2023-01-10

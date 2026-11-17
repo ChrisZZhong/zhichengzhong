@@ -1,4 +1,5 @@
 ---
+password: interviews
 layout: post
 title: "SQL"
 date: 2023-01-18
