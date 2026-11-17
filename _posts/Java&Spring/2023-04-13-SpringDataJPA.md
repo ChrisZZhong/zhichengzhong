@@ -1,102 +1,148 @@
 ---
 layout: post
-title: "Spring Data Repository & JPA"
-date: 2023-04-13
-description: "Distinguish between Spring Data JPA, JPA"
+title: "Spring Data: JDBC, JPA, Transactions, and Testing"
+date: 2023-10-25
+description: "Connect MySQL, choose between JdbcTemplate and JPA, define transaction boundaries, and test the service and repository layers."
 tag: Java & Spring
 ---
 
-# JPA (Java Persistence API)
+Start by deciding who should own the SQL. Use `JdbcTemplate` when you want to write queries and map results explicitly. Use JPA when you want a provider to manage mapped entities, and add Spring Data JPA when repository interfaces can remove boilerplate. Either way, put multi-step business operations behind a service boundary and test that boundary.
 
-JPA is a `specification` of Java. It is used to persist data between Java object and relational database. It doesn't provide any implementation, so it need a `provider` to implement it like `Hibernate`, `EclipseLink`, `TopLink`, etc.
+## Connect to a database with JDBC
 
-1.  ORM mapping between Java object and relational database
+Add a JDBC starter and a driver, such as `com.mysql:mysql-connector-j` for a Maven project using Spring Boot 3. Use `spring-boot-starter-jdbc` for `JdbcTemplate`. The Spring Data JDBC starter also brings in JDBC support if you need its repository abstraction.
 
-    - `@Entity` annotation is used to map Java object to relational database
-    - `@Table` annotation is used to map Java object to relational database table
-    - `@Column` annotation is used to map Java object to relational database column
-    - `@Id` annotation is used to map Java object to relational database primary key
-    - `@Transient` annotation is used to ignore the field when mapping Java object to relational database
+```properties
+spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/transactionDemo}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+```
 
-2.  JPQL (Java Persistence Query Language)
+Boot can configure a `DataSource` and `JdbcTemplate` from these settings and the driver on the classpath. Supply an explicit `@Bean` if you need a custom `DataSource`, for example when wiring more than one database. Keep secrets outside the repository.
 
-    - JPQL is a query language which is used to query data from relational database
-    - JPQL is similar to SQL, but it is object-oriented
-    - JPQL is database independent
+Here is the question lookup from the original setup exercise. `query` returns a list, `queryForObject` expects a single result, and `update` runs an insert, update, or delete. Pass values as parameters.
 
-3.  EntityManager
-    - EntityManager is used to manage the lifecycle of entity, and perform CRUD operations.
+```java
+@Repository
+public class QuestionDao {
+    private final JdbcTemplate jdbc;
 
-<img src = "/images/Full-Stack/SpringFramework/JPA-ORM.png">
+    private final RowMapper<Question> rowMapper = (rs, rowNum) -> new Question(
+        rs.getInt("question_id"),
+        rs.getInt("category_id"),
+        rs.getString("description"),
+        rs.getBoolean("active")
+    );
 
-# Spring Data JPA
+    public QuestionDao(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
-Spring Data JPA is a `framework` which is built on top of JPA. It is used to simplify the development of JPA application.
+    public List<Question> findAll() {
+        return jdbc.query("select * from question", rowMapper);
+    }
 
-<img src = "/images/Full-Stack/SpringFramework/SpringDataJPA.png">
+    public Question findById(int id) {
+        return jdbc.queryForObject(
+            "select * from question where question_id = ?", rowMapper, id
+        );
+    }
 
-# Spring Data Repository
+    public int addQuestion(int categoryId, String description, boolean active) {
+        return jdbc.update(
+            "insert into question (category_id, description, active) values (?, ?, ?)",
+            categoryId, description, active
+        );
+    }
 
-Spring Data Repository has different interfaces, and each interface is used to perform different operations.
+    public int changeStatus(int id, boolean active) {
+        return jdbc.update("update question set active = ? where question_id = ?", active, id);
+    }
+}
 
-1. `Repository` is the central interface in Spring Data repository abstraction. It is a `marker interface` to capture the types to work with and to help you to discover interfaces that extend this one. It is not used directly.
+record Question(int id, int categoryId, String description, boolean active) {}
+```
 
-2. `CrudRepository` provides CRUD operations, it extends `Repository` interface.
+## JPA and Spring Data repositories
 
-   ```Java
-   public interface CrudRepository<T, ID> extends Repository<T, ID> {
-       // Note that the ID here is a serializable which represent the id of the Entity
+JPA is the persistence specification. Hibernate and EclipseLink are providers that implement it. Spring Data JPA adds a repository layer on top. In a Boot 3 application, `spring-boot-starter-data-jpa` normally supplies Hibernate and its compatible dependencies. Add a database driver and use the datasource settings above.
 
-       <S extends T> S save(S entity);
-       Optional<T> findById(ID primaryKey);
-       Iterable<T> findAll();
-       long count();
-       void delete(T entity);
-       boolean existsById(ID primaryKey);
-       // … more functionality omitted.
-   }
-   ```
+```mermaid
+flowchart TD
+    Service["Service"] --> Repository["Spring Data JPA repository"]
+    Repository --> Manager["JPA EntityManager"]
+    Manager --> Provider["JPA provider, such as Hibernate"]
+    Provider --> DB[("Relational database")]
+```
 
-3. `PagingAndSortingRepository` provides `pagination` and `sorting` operations, it extends `CrudRepository` interface.
+- `@Entity` marks a persistent class, `@Table` selects its table, `@Id` marks the primary key, and `@Column` customizes column mapping. `@Transient` excludes a property from persistence.
+- `EntityManager` manages entities and their lifecycle in a persistence context. JPQL queries entities and their fields using an object model. SQL queries database tables and columns directly.
+- `Repository<T, ID>` captures the entity and ID types. `CrudRepository` provides methods such as `save`, `findById`, `findAll`, `existsById`, and `delete`. `PagingAndSortingRepository` adds APIs for `Sort` and `Pageable`. Since Spring Data 3.0, sorting interfaces no longer extend their CRUD counterparts. `JpaRepository` is a common choice that includes both. [Spring Data repository interfaces](https://docs.spring.io/spring-data/commons/reference/repositories/definition.html).
 
-   ```Java
-   public interface PagingAndSortingRepository<T, ID> extends CrudRepository<T, ID> {
-       Iterable<T> findAll(Sort sort);
-       Page<T> findAll(Pageable pageable);
-   }
-   ```
+Repository method names can express predicates, sort order, and case handling. Use `@Query` when an explicit query reads better.
 
-4. Query Feature
+```java
+public interface PersonRepository extends JpaRepository<Person, Long> {
+    List<Person> findByEmailAddressAndLastName(String emailAddress, String lastName);
+    List<Person> findDistinctByLastNameOrFirstName(String lastName, String firstName);
+    List<Person> findByLastNameIgnoreCaseOrderByFirstNameAsc(String lastName);
 
-   Using Spring Data Repository, we can define the query method by using the naming convention. In this way, we don't need to write the query statement and the implementation of the query method.
+    @Query("select p from Person p where p.emailAddress = :email")
+    Optional<Person> findByEmail(@Param("email") String email);
+}
+```
 
-   The machanism strips the prefixes `find…By`, `read…By`, `query…By`, `count…By`, and `get…By` from the method and starts parsing the rest of it.
+## Transactions and ACID
 
-   ```Java
-   interface PersonRepository extends Repository<User, Long> {
+Suppose account A and account B each start with $1,000. A transfer of $500 should preserve the total and either apply both changes or apply neither.
 
-   List<Person> findByEmailAddressAndLastname(EmailAddress emailAddress, String lastname);
+| Property | In the transfer example |
+| --- | --- |
+| Atomicity | The debit and credit commit as one unit or are both rolled back. |
+| Consistency | A successful transfer must preserve invariants such as the total balance. Application logic and database constraints enforce those rules. |
+| Isolation | Concurrent transfers should observe and change balances according to the chosen isolation level and locking strategy. |
+| Durability | Once committed, the changes survive failures within the database's durability guarantees. |
 
-   // Enables the distinct flag for the query
-   List<Person> findDistinctPeopleByLastnameOrFirstname(String lastname, String firstname);
-   List<Person> findPeopleDistinctByLastnameOrFirstname(String lastname, String firstname);
+Put `@Transactional` on a service method that owns the unit of work, such as `transfer`, or on the class when its methods share transaction defaults. Boot can enable transaction management when a suitable transaction manager is configured. In manually configured Spring, `@EnableTransactionManagement` enables annotation-driven support.
 
-   // Enabling ignoring case for an individual property
-   List<Person> findByLastnameIgnoreCase(String lastname);
-   // Enabling ignoring case for all suitable properties
-   List<Person> findByLastnameAndFirstnameAllIgnoreCase(String lastname, String firstname);
+By default, an unchecked exception or an `Error` triggers rollback. If a checked domain exception should also roll back, configure `rollbackFor`. Under proxy-based transaction management, call the transactional method through the bean proxy. An internal call on the same object does not open a new transaction. Also check the SQL or locking strategy separately when a transaction touches concurrently updated rows. [Spring transaction annotations](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html) · [Original notes on distributed transactions](https://chriszzhong.github.io/2023/06/transaction-in-microservices/).
 
-   // Enabling static ORDER BY for a query
-   List<Person> findByLastnameOrderByFirstnameAsc(String lastname);
-   List<Person> findByLastnameOrderByFirstnameDesc(String lastname);
-   }
-   ```
+## Testing Spring applications
 
-   We can also use `@Query` annotation to define the query method.
+A unit test can instantiate a service without Spring and verify its rules in isolation. A slice test such as `@WebMvcTest` or `@DataJpaTest` checks a focused part of the stack with a Spring context. Use a broader integration test to verify real wiring and boundaries such as the behavior of SQL queries or transaction rollback.
 
-   ```Java
-   interface PersonRepository extends Repository<User, Long> {
-       @Query("select u from User u where u.emailAddress = ?1")
-       User findByEmailAddress(String emailAddress);
-   }
-   ```
+### Mockito and JUnit
+
+Boot projects typically use `spring-boot-starter-test` in test scope for JUnit Jupiter and Mockito. Use `@ExtendWith(MockitoExtension.class)` to initialize Mockito annotations in a plain JUnit 5 test.
+
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    @Mock
+    private UserRepository repository;
+
+    @InjectMocks
+    private UserService service;
+
+    @Test
+    void returnsUserById() {
+        User user = new User();
+        user.setId(1L);
+        user.setName("test");
+        when(repository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertEquals("test", service.getUserById(1L).getName());
+    }
+}
+```
+
+- `@Mock` creates a test double. `@InjectMocks` constructs or wires the real object being tested. `@Spy` wraps an object and calls real methods unless stubbed.
+- `when(mock.method()).thenReturn(value)` is the usual syntax. Use `doReturn(value).when(spy).method()` when evaluating the call during stubbing would run an unwanted real method.
+- To replace a bean in the test context, use `@MockitoBean` or `@MockitoSpyBean` on Spring Framework 6.2 and later. Older Boot tests often use `@MockBean` and `@SpyBean`. [Spring test context bean overrides](https://docs.spring.io/spring-framework/reference/testing/annotations/integration-spring/annotation-mockitobean.html).
+- Use `@BeforeEach` and `@AfterEach` for per-test setup and cleanup. `@BeforeAll` and `@AfterAll` run once per class and are static by default. `@DisplayName` labels tests, and `@Disabled` skips them.
+
+### Code coverage with JaCoCo
+
+Configure `org.jacoco:jacoco-maven-plugin` under Maven build plugins with a version compatible with your JDK. Run `prepare-agent` before tests and bind `report` to `verify`. Then run `./mvnw clean verify` and open `target/site/jacoco/index.html` in a typical single-module project.
+
+Use coverage to find branches no test exercises. Also check what those tests assert. A test can execute a line without checking whether it behaved correctly.

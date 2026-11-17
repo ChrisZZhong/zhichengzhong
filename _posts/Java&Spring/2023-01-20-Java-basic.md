@@ -1,333 +1,151 @@
 ---
 layout: post
-title: "Java Basic"
-date: 2023-01-20
-description: "Java Basic knowledge"
+title: "Java Fundamentals: Objects, Collections, Concurrency, and I/O"
+date: 2025-06-30
+description: "Interview notes on OOP and SOLID, collections, JVM memory, threads and futures, and buffered input."
 tag: Java & Spring
 ---
 
-## SOLID Principles
+Use this guide when you need to explain how Java code is designed and how it behaves at runtime. For signatures and short coding interview examples, see [Java API](/blog/Java%26Spring/2022-03-07-Java-API). For lambdas and collection pipelines, see [Java 8 Streams](/blog/Java%26Spring/2023-03-30-Java8-Stream).
 
-[detailed explanation](https://chriszzhong.github.io/2023/03/Java-Core/#solid-principle)
+## Object-oriented programming
 
-- `Single Responsibility Principle`: A class should have only one job.
+| Concept | What it means in Java |
+| --- | --- |
+| Encapsulation | Keep internal state behind an API that protects invariants. A private balance and a checked `withdraw` method are more useful than a public setter. |
+| Abstraction | Expose behavior through an interface or abstract class while hiding implementation details. An abstract class can hold instance state and define constructors. Interfaces can supply default and static methods as well as abstract methods. |
+| Inheritance | A class extends one superclass and can implement multiple interfaces. Prefer composition when the relationship is “has a” instead of “is a.” With conflicting inherited interface defaults, an implementation may need to override the method explicitly. |
+| Polymorphism | A call through an interface or base class can dispatch to a subclass override at runtime. Overloading selects a signature at compile time based on the declared argument types. Java does not support user-defined operator overloading. |
 
-- `Open Closed Principle`: Class open for extension, closed for modification.
+Reflection can inspect and in some circumstances access members outside their normal visibility. It is a separate mechanism from encapsulation.
 
-- `Liskov Substitution Principle`: Subclass must be substitutable for their parent class.
+## SOLID principles
 
-- `Interface Segregation Principle`: If an implementation class does not use all the methods of an interface, then the interface should be split into smaller ones.
+| Principle | Example |
+| --- | --- |
+| Single responsibility | Separate a shape's geometry from formatting an area report. The two classes change for different reasons. |
+| Open–closed | Add another payment method by implementing `PaymentProcessor` and registering it. Existing payment processing logic stays focused on the shared contract. |
+| Liskov substitution | A method promising a mutable `List` must return a list that supports the operations callers rely on. Matching a type alone does not guarantee matching behavior. |
+| Interface segregation | Split charging and refunding into separate interfaces when some payment methods only support charging. |
+| Dependency inversion | Let the checkout service depend on `PaymentProcessor` and supply the concrete implementation from outside. Spring's [dependency injection](/blog/Java%26Spring/2023-04-07-Spring-Boot#dependency-injection-and-the-ioc-container) is one way to wire this up. |
 
-- `Dependency Inversion Principle`: High-level modules should not depend on low-level modules. Both should depend on abstractions.
+## Collections and lookup
 
-## OOP
+| Structure | Reach for it when |
+| --- | --- |
+| Array | Size is fixed or you want to store primitives without boxing. Indexed access is constant time. |
+| `ArrayList` | You need a growable list with constant-time indexed access and amortized constant-time append. Inserting or deleting in the middle shifts later elements. |
+| `LinkedList` | You already have a position or need operations at the ends. Finding an arbitrary index still takes linear time. For a basic queue or stack, also consider `ArrayDeque`. |
+| `HashMap` | You need fast lookup by key and can live without iteration order. It allows a null key and null values and requires external coordination if multiple threads modify it. |
+| `Collections.synchronizedMap` | You need a synchronized wrapper around an existing map. Null behavior follows the backing map. Coordinate iteration and compound operations using the wrapper's lock. |
+| `Hashtable` | You are working with a legacy synchronized map API. It rejects null keys and values. |
+| `ConcurrentHashMap` | Multiple threads need to access and update a shared map. It rejects null keys and values. Use atomic operations such as `computeIfAbsent` for compound updates. |
 
-[detailed explanation](https://chriszzhong.github.io/2023/03/Java-Core/#oop)
+`HashMap` uses a hash to select a bucket in its backing table and `equals` to distinguish keys. A collision means different keys land in the same bucket. With enough collisions and capacity, Java 8's implementation can turn a bucket's linked list into a tree. Keep the fields used by a key's `equals` and `hashCode` stable while that key is in the map.
 
-- `Encapsulation`: wrapping up of data under a single unit. (data hiding, `reflection`)
+## Immutability and strings
 
-- `Abstraction`: hiding internal details and showing functionality only. (`abstract class`, `interface`)
+An immutable object's state cannot change after construction. One common implementation is a final class with private final fields and no setters. Copy mutable inputs before storing them and avoid exposing mutable internals through accessors. A final reference can still point to an object whose contents change.
 
-- `Inheritance`: Class can extend another class. (`Diamond problem`)
+`String` immutability makes references safe to share, keeps hash codes stable for map lookups, and makes pooling literals practical. A string's contents also cannot be altered after being passed to another component. Literal strings are interned, while a string created at runtime is not automatically guaranteed to be the same object as an equal literal. Compare contents with `equals`.
 
-- `Polymorphism`: perform a single action in different ways. (`overloading`, `overriding`)
+Use `StringBuilder` for repeated changes within one thread. `StringBuffer` synchronizes its individual methods, so a sequence of calls may still need coordination.
 
-## Data Structure
+## Exceptions and resource cleanup
 
-### Array & ArrayList
+- **Checked exceptions** such as `IOException` must be caught or declared. **Unchecked exceptions** such as `NullPointerException` do not have that requirement.
+- Define a custom exception when callers need to distinguish a domain failure. Extend `Exception` for a checked exception or `RuntimeException` for an unchecked one.
+- A final variable cannot be reassigned, a final method cannot be overridden, and a final class cannot be extended. A `finally` block handles cleanup on normal and exceptional exits. The legacy `finalize()` method is deprecated for removal and is unsuitable for timely cleanup. Use try-with-resources for resources implementing `AutoCloseable`.
 
-| -            | Array                                      | ArrayList                             |
-| ------------ | ------------------------------------------ | ------------------------------------- |
-| Type         | Array                                      | implemet List                         |
-| Size         | fixed size                                 | dynamic size                          |
-| Element type | can store primitive data types and objects | can only store objects                |
-| Performance  | Slightly better than ArrayList             | slower, More flexible and ease of use |
-
-### ArrayList & LinkedList
-
-| -           | ArrayList                                   | LinkedList                                |
-| ----------- | ------------------------------------------- | ----------------------------------------- |
-| Performance | faster, random access O(1) get(index)       | slower, sequential access                 |
-| Usage       | frequently need to access elements by index | Frequently insert/remove at head or tail. |
-
-### HashMap
-
-- HashMap maintains a bucket array to store the key-value pairs.
-- `Hashing`: when adding a key-value pair, it generates a hash code according to the key; the code is used to determine the index of the bucket.
-- `Index calculation`: taking the modulus of the hash code with the size of the bucket array.
-- `Collision`: when two keys have the same hash code, they are stored in the same bucket as a linked list.
-
-### HashTable & SynchronizedMap & ConcurrentHashMap
-
-- `HashMap`: not thread-safe, fast, null key/value.
-- `SynchronizedMap`: thread-safe, slow, null key/value.
-- `HashTable`: thread-safe, slow, no null key/value.
-- `ConcurrentHashMap`: thread-safe, fast, No null key/value.
-
-## Immutability
-
-state of an object that cannot be changed after it is created.
-
-1. final variable: value (reference) cannot be changed once assigned.
-2. final method: cannot be overridden.
-3. final class: cannot be extended by other class.
-
-### How to create Immutable Class
-
-1. Declare the class as final so it can’t be extended.
-2. Make all fields private and final.
-3. No setter methods. All variables are set in the constructor with the deep copy of the input.
-4. Return copies of feild data in getter methods.
-
-### String is immutable
-
-1. `Security concern`: sensitive information such as password, network connection, etc. Being immutable prevents malicious code from modifuing sensitive information.
-
-2. `Thread safe`: Immutable objects are by default thread safe, can be shared among multiple threads.
-
-3. `Hashcode`: String is widely used as key in Map and other collection classes. Being immutable guarantees that hashcode will always be same so that it can be cached without worrying about the changes.
-
-4. `String Pool`: Save the runtime memory by reusing strings.
-
-## Exception
-
-two types of exceptions: `checked` and `unchecked`.
-
-- `Checked Exception`: checked at compile-time, like `IOException`, `SQLException`, etc.
-
-- `Unchecked Exception`: checked at runtime, like `NPE`.
-
-To handle exceptions, we can use `try-catch` or `throws` keyword. And in web application, we can use exception handler to handle exceptions.
-
-### Custom Exception
-
-Create a class extending Exception or RunTimeException class, to use it, throw an exception in somewhere and use a try catch block to catch it.
-
-```Java
-public class CustomException extends Exception {
-   public CustomException(String message) {
-      super(message);
-   }
+```java
+class InvalidReportException extends Exception {
+    InvalidReportException(String message) {
+        super(message);
+    }
 }
 ```
 
-## Thread
+## Serialization and marker interfaces
 
-1. `New`: new thread.
+A marker interface conveys information through its type without declaring methods. `Serializable` opts an object into Java's built-in object serialization, and `Cloneable` is another example.
 
-2. `Runnable`: call `start()` method, ready to run.
+Declare a `serialVersionUID` explicitly if serialized data must survive compatible changes. An incompatible version can cause deserialization to fail. Mark fields `transient` to exclude them from default serialization. For example, `transient int age` will not be written by the default mechanism. Avoid native Java deserialization of untrusted input.
 
-3. `Running`: When the thread is running
+## JVM memory and execution
 
-4. `Blocked`: The thread will be in blocked state when it is trying to acquire a lock but currently the lock is acquired by the other thread. The thread will move from the blocked state to runnable state when it acquires the lock.
+The class loader brings classes into the JVM. The execution engine interprets bytecode and can compile hot code with the JIT. JNI connects Java code to native libraries.
 
-5. `Waiting`: When we call the `wait()`, `join()` method, the thread will be in the waiting state and `release the lock` until another thread calls the `notify()` or `notifyAll()` method.
+Threads have their own stacks for method frames. Objects ordinarily live on the shared heap, where garbage collection reclaims unreachable objects. Generational collectors distinguish newer and older objects. HotSpot stores class metadata in native Metaspace, separate from the Java heap.
 
-6. `Timed Waiting`: When we call the `sleep()` method, the thread will be in the timed waiting state and `release the lock` for the specified time. When the time is up, the thread will move to the runnable state.
+## Threads and synchronization
 
-7. `Terminated`: When the thread finishes its execution, it will be in the terminated state.
+A Java thread moves through `NEW`, `RUNNABLE`, `BLOCKED`, `WAITING`, `TIMED_WAITING`, and `TERMINATED`. Java's `RUNNABLE` includes a thread running or eligible to run. `BLOCKED` specifically means the thread is waiting to enter a monitor.
 
-### Create a thread
+- `start()` schedules work on a new thread. Calling `run()` directly is an ordinary call on the current thread.
+- `synchronized` lets one thread at a time hold a monitor and provides visibility between releases and subsequent acquisitions of the same monitor. An instance method uses the instance monitor, while a static synchronized method uses the class monitor.
+- `wait()` releases the monitor on the object it waits on. Check the condition in a loop after waking. `join()` waits for another thread to finish. `Thread.sleep()` keeps any monitors the thread holds.
 
-Generally, we can create a thread in two ways: Implement `Runnable` interface or extend `Thread` class.
+See the [Java thread API](https://docs.oracle.com/javase/8/docs/api/java/lang/Thread.html) for method contracts.
 
-But we use Runnable interface instead of Thread class, because:
+## Executors and futures
 
-1.  Thread `implements` runnable, when extending Thread, we only override run() method. this is a violation of `IS-A` principle.
+Prefer submitting a task to an executor when you need to separate work from thread management. A `Runnable` returns no result. A `Callable<T>` can return a result and throw a checked exception. `ExecutorService.submit` returns a `Future`, and `get()` blocks until the result is ready or the task fails. With `CompletableFuture`, use `runAsync` for a `Runnable` or `supplyAsync` for a value-producing `Supplier`. Compose stages before waiting for a final result.
 
-2.  `After extending` Thread class, we can't extend other classes.
+```java
+ExecutorService executor = Executors.newFixedThreadPool(2);
+try {
+    Callable<String> task = () -> "monthly report";
+    Future<String> report = executor.submit(task);
+    System.out.println(report.get());
 
-Example:
-
-```Java
-Runnable task = () -> someReallyLongProcess();
-Executor executor = Executors.newSingleThreadExecutor();
-executor.execute(task);
-```
-
-We need to access the result and when bug happens, we need to know the message of the exception. But `Runnable` can not `return the result` and `throw exception`, so we can use `Callable` and `Future` to solve this problem.
-
-### Callable
-
-`Callable` is a functional interface, which has only one method call(). Callable is similar to Runnable, but Callable can return the result and throw exception.
-
-```Java
-@FunctionalInterface
-public interface Callable<V> {
-
-   V call() throws Exception;
-
+    CompletableFuture<Integer> length = CompletableFuture
+        .supplyAsync(() -> "monthly report", executor)
+        .thenApply(String::length);
+    System.out.println(length.join());
+} finally {
+    executor.shutdown();
 }
 ```
 
-`Executor` only accepts `Runnable`, so we need to use `ExecutorService` to run the `Callable` thread.
+`thenApply` transforms a result, `thenCompose` flattens a stage that itself returns a future, and `exceptionally` can supply a fallback. Size the pool and bound queued work for your workload rather than creating a thread for every request. An executor supplied to `CompletableFuture` determines where the async stage runs. An executor does not take the future itself as a task. [More examples of Callable and CompletableFuture](https://ducmanhphan.github.io/2020-02-10-How-to-use-CompletableFuture-Callable-in-Java/).
 
-```Java
-public interface ExecutorService extends Executor {
+## Buffered input for coding exercises
 
-   // Submits a value-returning task for execution and returns a Future representing the pending results of the task.
-   <T> Future<T> submit(Callable<T> task);
+`Scanner` is convenient, but token matching and conversion can add overhead on large inputs. Use `BufferedReader` for line-oriented input or wrap it in a tokenizer when whitespace, including newlines, is only a separator. This is file or console I/O. Java's collection [Stream API](/blog/Java%26Spring/2023-03-30-Java8-Stream) solves a different problem.
 
-   // Submits a Runnable task for execution and returns a Future representing that task.
-   Future<?> submit(Runnable task);
+```java
+BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+PrintWriter output = new PrintWriter(System.out);
 
-   // Submits a Runnable task for execution and returns a Future representing that task.
-   <T> Future<T> submit(Runnable task, T result);
+String line;
+while ((line = reader.readLine()) != null) {
+    String trimmed = line.trim();
+    if (!trimmed.isEmpty()) {
+        String[] fields = trimmed.split("\\s+");
+        output.println(fields.length);
+    }
+}
+output.flush();
+```
+
+For matrix problems that do not depend on line breaks, `StreamTokenizer` can consume numeric tokens across lines. The example expects valid integer input containing one row count, one column count, and exactly that many matrix entries.
+
+```java
+StreamTokenizer tokens = new StreamTokenizer(
+    new BufferedReader(new InputStreamReader(System.in))
+);
+if (tokens.nextToken() == StreamTokenizer.TT_NUMBER) {
+    int rows = (int) tokens.nval;
+    tokens.nextToken();
+    int columns = (int) tokens.nval;
+    int[][] matrix = new int[rows][columns];
+    for (int row = 0; row < rows; row++) {
+        for (int column = 0; column < columns; column++) {
+            if (tokens.nextToken() != StreamTokenizer.TT_NUMBER) {
+                throw new IOException("Expected a matrix entry");
+            }
+            matrix[row][column] = (int) tokens.nval;
+        }
+    }
 }
 ```
-
-### Future
-
-The `Future` represents the result of Thread. When thread executed, the result or the exception message will be stored in the Future for main thread to access.
-
-```Java
-// In the main thread
-Callable<String> task = () -> buildPatientReport();
-Future<String> future = executor.submit(task);
-
-String result = future.get();   // blocking here until finished to get the result
-```
-
-**`DownSide`**: Threads should be independent, also we need multi-threads to improve the performance, but `Future` will `block` the main thread, so we need to use CompletableFuture to solve this problem.
-
-### CompletableFuture
-
-`CompletableFuture` is almost the same as a Future object with more methods and more capabilities. (`runnable`, `supplier`)
-
-```java
-Runnable task = () -> System.out.println("Hello world");
-ExecutorService service = Executors.newSingleThreadExecutor();
-Future<?> future = service.submit(task);    // use future object
-CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(task);
-```
-
-`CompletableFuture` do not support `Callable`, only support `Runnable` and `Supplier`.
-
-```java
-Supplier<String> task = () -> readPage("https://google.com");
-ExecutorService service = Executors.newSingleThreadExecutor();
-CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(task);
-```
-
-Future chain to handle the results:
-
-```java
-CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(task);
-CompletableFuture<Integer> lengthFuture = completableFuture.thenApply(String::length).thenApply(len -> len * 2).exceptionally(ex -> 0);
-```
-
-### ExecutorService
-
-`ExecutorService` is a thread pool used to manage threads, and can submit tasks to the thread pool for execution. Generally, we can use `ExecutorService` to run Runnable, Callable, CompletableFuture threads.
-
-Advantage:
-
-- Easy to manage threads and reuse threads, which can reduce the overhead of thread creation and improve performance.
-
-- Can limit the number of threads, avoid too many threads to cause system crash.
-
-Disadvantage:
-
-- A careless threads pool size can halt the system and bring performance down
-
-- Always shut down the executor service after tasks are completed and service is no lon..ger needed. Otherwise, JVM will never terminate.
-
-## synchronization
-
-Control the access of multiple threads to any shared resource to achieve consistency and avoid race problem.
-
-two types of synchronization: `Method synchronization` & `Block synchronization`
-
-Use synchronized keyword to achieve synchronization. Add synchronized to the method declaration, or add synchronized to the block. They will both bock other threads to access the method or block until the current thread finished and release the lock.
-
-## Marker Interface & Serialization (transient)
-
-- `Marker Interface`: empty interface used to provide run-time information about objects. like `Serializable`, `Cloneable`.
-
-`Serialization` is convert the object to a byte stream, which can be stored in a file or sent over the network, and then be deserialized later to get the object back. The advantage of serialization is that it is easy to store and transmit data over network.
-
-To serialize an object, the object must implement the `Serializable interface`.
-
-Serializable is a marker interface used to mark the class can be `serialized` and `deserialized`.
-
-When object is serialized, the `serialVersionUID` will be generated automatically. The serialVersionUID is used to ensure that the serialized and deserialized objects are compatible. If the serialVersionUID is not the same, the deserialization will fail.
-
-If we do not want to serialize some fields, we can use `transient` keyword to declare the field. Like public transient int age;
-
-## JVM
-
-Two systems: class loader, Execution Engine
-Two components: `Runtime data area`, `native interface`
-
-- `Class loader`: loading classes into memory
-- `Execution Engine`: JIT compiler, compiles bytecode to machine code
-
-- `Runtime data area`:
-  `Method area` used to store class-level structures and metadata, and share memory with all threads in JVM. (callstacks)
-  `Heap`:store objects, divided into the `Young Generation`, `Old Generation` (Tenured), MetaSpace. GC runs here.
-
-Native interface:
-allows Java code to interact with native libraries written in other languages, such as C and C++.
-
-### JVM Heap
-
-- `Young Generation`: store newly created objects
-
-- `Old Generation`: store long-lived objects, Major GC runs here.
-
-- `MetaSpace`: store class metadata about classes, methods, and other runtime structures, it can dynamically grow and shrink as needed.
-
-# Java 8
-
-## Lambda expression
-
-lambda expression is used to create an anonymous function. (para) -> {action}
-
-The usage is in Java 8, we can use `lambda expression` to initialize a `functional interface`. Like `Comparator` interface, we can use lambda expression to create a `Comparator` object when using priority queue.
-
-## Functional Interface
-
-An interface that has only one abstract method and provides a single functionality. `@FunctionalInterface` annotation is not mandatory but it will add constraints to check if there is only one method in it.
-
-- `Consumer` takes a single input and performs action without returning the result.
-- `Supplier` used to generate a value.
-- `Function` takes a single input and produces a result.
-- `Predicate` takes a single input and returns a boolean value.
-
-## Optional
-
-Optional object is used to handle NPE problems, handling values as ‘availableʼ or ‘not availableʼ instead of checking null values.
-
-- empty(): Returns an empty Optional object
-- of(): Returns an `non-null` value or throws `NullPointerException` if null
-- ofNullable(): Returns an Optional with the specified value, if non-null, otherwise returns an empty Optional
-- isPresent(): Returns true if there is a value present, otherwise false
-- get(): Returns the value if present, otherwise throws NoSuchElementException
-
-## Stream API (Intermediate & Terminal Operations)
-
-Stream API is used to process collections of objects, it is a pipeline that performs a series of operations to the object to get the desired result.
-
-- `Intermediate` operation is lazily executed and returns a stream as a result, thus can be pipelined. `filter()` , `map()` , `flatMap()` , `distinct()` , and `sorted()`.
-
-  flatMap() : It can transform data or flatten data, like flatten a 2d array to an array.
-
-- `Terminal` operation is eagerly executed and returns a non-stream result, thus ending the stream. `forEach()` , `count()` , `collect()` , `reduce()` , `allMatch()` , `anyMatch()` , `noneMatch()` , `findFirst()` , `findAny()`.
-
-## Comparable & Comparator
-
-They both are used for comparing two objects. They serve for different purposes.
-
-- `Comparable` is used to sort objects in a natural order.
-
-  1. Need to `implement` the `Comparable` interface and override the `compareTo()` method.
-
-- `Comparator` is a functional interface used to sort objects in a custom order.
-  1. We don't need to implement the `Comparator` interface, but we need to create a new class to implement the `Comparator` interface and override the `compare()` method.
-  2. We can also use lambda expression to create a `Comparator` object.
-
-## Default & Static methods in Interface
-
-- `Default` add a new method to the interface without modifying implementation classes, like Stream().
-
-- `Static` enable to define a method belonging to the interface itself. It cannot be overridden by implementation classes.
