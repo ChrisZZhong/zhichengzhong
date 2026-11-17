@@ -21,11 +21,21 @@ prime: false
 
 ### 1.1 迁移前后，一笔支付请求怎么走？
 
-| 阶段 | 从客户端到 Core 的请求链路 |
-|---|---|
-| 迁移前 | Request → DataPower（DP）→ ECWS → Core |
-| 迁移后，客户端发 SOAP | SOAP 请求 → DP → SOAP-to-REST 翻译层（转为 REST）→ `fs-internal-service` → Core |
-| 迁移后，客户端发 REST | REST 请求 → DP → 保持 REST 原样转发 → `fs-internal-service` → Core |
+```mermaid
+flowchart TB
+    subgraph legacy["迁移前 · ECWS 编排"]
+        oldReq["客户端请求"] --> oldDP["DataPower（DP）"]
+        oldDP --> ecws["ECWS"] --> oldCore["Core"]
+    end
+
+    subgraph migrated["迁移后 · 新服务编排"]
+        req["客户端请求"] --> dp["DataPower（DP）"]
+        dp -->|SOAP 请求| translator["SOAP 转 REST"]
+        translator -->|转换后的 REST| service["fs-internal-service"]
+        dp -->|REST 请求原样转发| service
+        service --> core["Core"]
+    end
+```
 
 DP 继续负责鉴权、限流和路由。原先由 ECWS 承担的支付编排现在由 `fs-internal-service` 负责。两个入口交给它的都是 REST 请求，所以仍使用 SOAP 的客户也可以调用新服务。
 
