@@ -21,36 +21,49 @@ prime: false
 
 ### 1.1 迁移前后，一笔支付请求怎么走？
 
-**迁移前：支付请求经过 ECWS**
+**迁移前：一次支付调用的往返**
 
 ```mermaid
-flowchart TD
-    req["客户端请求"] --> dp["DataPower（DP）"]
-    dp --> ecws["ECWS"]
-    ecws --> core["Core"]
+%%{init: {"sequence": {"width": 45, "actorMargin": 12, "mirrorActors": false}} }%%
+sequenceDiagram
+    participant C as 客户端
+    participant D as DP
+    participant E as ECWS
+    participant K as Core
+    C->>D: 请求
+    D->>E: 转发
+    E->>K: 支付调用
+    K-->>E: 支付结果
+    E-->>D: 响应
+    D-->>C: 返回
 ```
 
-**迁移后：支付编排与异步回执邮件**
+**迁移后：支付编排与异步邮件通知**
 
 ```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 18, "rankSpacing": 32}} }%%
 flowchart TD
-    req["客户端请求"] --> dp["DataPower（DP）"]
-    dp -->|SOAP| translate["SOAP 转 REST"]
-    translate --> service["fs-internal-service"]
+    client["客户端"] --> dp["DataPower（DP）"]
+    dp -->|SOAP| translator["SOAP 转 REST"]
+    translator --> service["fs-internal-service"]
     dp -->|REST 原样转发| service
-    service --> core["Core 调用 Mainframe"]
-    core -->|返回支付结果| result["编排服务处理响应"]
-    result --> txn["Oracle 本地事务<br/>保存 workflow record<br/>符合通知条件时一并写 outbox"]
-    txn -->|事务已提交且有通知事件| cdc["CDC"]
-    cdc --> kafka["Kafka"]
-    kafka --> consumer["Email Consumer"]
-    consumer --> mail["邮件服务"]
-    mail -->|发送失败，可重试| retry["重试"]
-    retry -->|重试耗尽| dlt["死信主题（DLT）"]
-    dlt --> replay["受控重放"]
+    service -->|支付调用| core["Core / Mainframe"]
+    core -.->|支付结果| service
+    service -->|收到结果后写入| db[("Oracle 本地事务<br/>workflow record + 按需写入 outbox")]
+
+    db -.->|已提交的 outbox 记录| cdc["CDC"]
+    cdc -->|发布事件| kafka["Kafka"]
+    kafka -->|消费通知| consumer["Email Consumer"]
+    consumer -->|发送回执| mail["邮件服务"]
+    mail -.->|发送结果| consumer
+
+    consumer -->|暂时失败| retry["Retry topic"]
+    retry -.->|退避后再消费| consumer
+    consumer -->|重试耗尽| dlt["死信主题 DLT"]
+    dlt -.->|受控重放| consumer
 ```
 
-DP 负责鉴权、限流和路由。两种请求最终都以 REST 进入 `fs-internal-service`。编排服务收到 Core 响应后保存流程记录，并按通知条件决定是否写入 outbox。事务提交后，CDC 才能读到通知事件；支付请求无需等待回执邮件发出。
+DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。图中两条恢复路径都回到 Email Consumer：短暂故障按退避策略重试，死信经核实后才受控重放。两者都沿用原通知身份。
 
 **先记住五件事：**
 
