@@ -258,6 +258,25 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 **实现追问：** 如果处理结果完全落在同一个数据库里，可以把“去重记录 + 业务写入”放在一个事务中，用唯一约束/原子操作防并发竞争。发邮件属于外部副作用，不能直接照搬这个保证。[Idempotent Consumer](https://microservices.io/patterns/communication-style/idempotent-consumer.html)
 
+#### How would you configure Kafka for idempotent writes to the retry topic?
+
+**先举一个会重复的场景。** Producer 把通知写入 retry topic，broker 已经追加了记录，但确认响应在网络中丢失。开启幂等 producer 后，客户端自动重发同一批次时，broker 可以依据 producer ID 和分区内的序列号识别重复。本题里的 producer 是应用转发 retry / DLT 记录时使用的客户端；Kafka 平台由平台团队维护。
+
+| 面试官问哪一层 | 参数怎么答 | 保证什么 |
+|---|---|---|
+| Producer 写入去重 | `enable.idempotence=true`，配合 `acks=all`、`retries > 0`、`max.in.flight.requests.per.connection ≤ 5`（参考取 5） | 同一 producer 会话内，协议层自动重试同一批次，分区日志只追加一次。 |
+| Topic 写入持久性 | 每个 partition 的 replication factor 为 3，`min.insync.replicas=2` | 配合 `acks=all`，3 个副本都在 ISR 时等 3 个；只剩 2 个同步时等 2 个；只剩 1 个时写入无法成功确认。 |
+
+3 份副本和最少 2 份同步副本是项目回忆中的数值。Producer 参数来自项目设计参考，生产环境的实际取值以部署配置为准。[Kafka producer 配置](https://kafka.apache.org/41/configuration/producer-configs/#enable.idempotence) · [Kafka topic 配置](https://kafka.apache.org/41/configuration/topic-configs/#min.insync.replicas)
+
+**英文口述**
+
+> For writes to the retry topic, I’d enable producer idempotence, use all acknowledgments, allow retries, and keep at most five requests in flight per connection. That covers a lost acknowledgment: the producer can retry the same batch safely. The topic’s replication factor of three and minimum ISR of two address durability. If the consumer calls our email API twice, that’s a separate problem. I’d check whether the API can deduplicate requests using the same notification ID.
+
+**追问：producer 的 retries 就是那 5 次邮件重试吗？** Producer 重试的是一次 Kafka 写入，重试时间还受 `delivery.timeout.ms` 约束。1、2、4、8、16 分钟是应用重新调用邮件 API 的等待间隔。这两层分别计数。
+
+**追问：retry topic 已写成功，但提交原 offset 前进程崩了呢？** 重启后可能再次消费原记录，应用会发起一次新的 `send()`。即使沿用相同的 Kafka key，也可能再写入一条记录。若要求 Kafka 内的转发和位点一起提交，可以讨论 Kafka 事务。外部邮件 API 仍要依据同一通知身份以及它实际支持的幂等或查询能力来处理重复。
+
 ### Q06. Why is checking “already sent” before sending not enough?
 
 两个 worker 可以同时查到“没发过”，然后各发一次。这是 check-then-act 竞争；即使存在唯一索引，也要问约束检查发生在副作用之前还是之后。
