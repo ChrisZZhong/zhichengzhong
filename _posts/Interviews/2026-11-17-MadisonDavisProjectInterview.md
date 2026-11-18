@@ -60,8 +60,8 @@ flowchart TD
     retry -->|退避后消费| rc["Retry consumer（多实例）"]
     rc --> cb{"Circuit breaker<br/>允许发送？"}
     cb <-->|读写共享状态| redis[("Redis")]
-    cb -->|闭合：放行 / 半开：少量探测| mail
-    cb -.->|打开：暂停补发| hold["待重试通知积压在 Kafka"]
+    cb -->|CLOSED：允许补发| mail
+    cb -.->|OPEN：暂停补发| hold["待重试通知积压在 Kafka"]
     mail -.->|API 响应| rc
     rc -->|仍可重试| retry
     rc -->|单条重试耗尽| dlt["死信主题 DLT"]
@@ -70,7 +70,7 @@ flowchart TD
 
 DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。
 
-**邮件 API 暂时不可用时。** consumer 调用 Infra 的邮件 API 发送回执，SMTP 由 Infra 维护。首次调用遇到可重试的故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用邮件 API 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向同一个邮件 API，形成 retry storm。半开时先用少量请求探测；若邮件 API 仍不可用就再次打开熔断器，确认恢复后再逐步消化积压。单条通知实际重试耗尽时才走图中的 DLT 分支。
+**邮件 API 暂时不可用时。** consumer 调用 Infra 的邮件 API 发送回执，SMTP 由 Infra 维护。首次调用遇到可重试的故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用邮件 API 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向同一个邮件 API，形成 retry storm。熔断器只有 OPEN 和 CLOSED 两个状态。恢复到 CLOSED 后，retry consumer 可以继续调用邮件 API。单条通知实际重试耗尽时才走图中的 DLT 分支。
 
 **先记住五件事：**
 
@@ -312,7 +312,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 | 认证、证书或全局配置故障 | 需要修复依赖/配置；避免每条消息持续制造流量 |
 | 请求可能已被接受，但响应丢失 | 结果未知，不能仅凭 timeout 就认定可安全重发 |
 
-**项目可讲：** 退避和 jitter 把单条通知的重试时间错开。邮件 API 持续出现可重试故障时，retry consumer 通过 Redis 共享熔断状态，暂停补发。单条重试耗尽再进入 DLT，按需受控重放。精确等待几秒、几次重试留在参数参考里，除非已经查回实际配置。
+**项目可讲：** 退避和 jitter 把单条通知的重试时间错开。邮件 API 持续出现可重试故障时，retry consumer 通过 Redis 共享熔断状态，暂停补发。单条重试耗尽再进入 DLT，按需受控重放。设计参考给出的单条通知重试间隔依次为 15 秒、1 分钟、4 分钟、16 分钟、30 分钟，附加约 ±20% jitter。5 次重试的名义等待合计 51 分 15 秒。生产环境的具体重试间隔、熔断器保持 OPEN 的时长及关闭条件仍待核实。
 
 **为什么加 jitter？** 让大量失败事件不要同时重试。它不能代替总重试预算和依赖的流量控制。
 
