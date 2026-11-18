@@ -54,15 +54,15 @@ flowchart TD
     db -.->|已提交的 outbox 记录| cdc["CDC"]
     cdc -->|发布事件| kafka["Kafka"]
     kafka -->|消费通知| consumer["Email Consumer"]
-    consumer -->|首次发送| mail["SMTP 邮件服务"]
-    mail -.->|首次发送结果| consumer
+    consumer -->|首次调用| mail["邮件 API<br/>Infra 维护"]
+    mail -.->|API 响应| consumer
     consumer -->|暂时失败| retry["Kafka retry topic"]
     retry -->|退避后消费| rc["Retry consumer（多实例）"]
     rc --> cb{"Circuit breaker<br/>允许发送？"}
     cb <-->|读写共享状态| redis[("Redis")]
     cb -->|闭合：放行 / 半开：少量探测| mail
     cb -.->|打开：暂停补发| hold["待重试通知积压在 Kafka"]
-    mail -.->|重试结果| rc
+    mail -.->|API 响应| rc
     rc -->|仍可重试| retry
     rc -->|单条重试耗尽| dlt["死信主题 DLT"]
     dlt -.->|受控重放| consumer
@@ -70,7 +70,7 @@ flowchart TD
 
 DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。
 
-**SMTP 暂时不可用时。** 首次发送遇到暂态故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用 SMTP 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向故障中的 SMTP，形成 retry storm。半开时先用少量请求探测；若 SMTP 仍不可用就再次打开熔断器，确认恢复后再逐步消化积压。单条通知实际重试耗尽时才走图中的 DLT 分支。
+**邮件 API 暂时不可用时。** consumer 调用 Infra 的邮件 API 发送回执，SMTP 由 Infra 维护。首次调用遇到可重试的故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用邮件 API 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向同一个邮件 API，形成 retry storm。半开时先用少量请求探测；若邮件 API 仍不可用就再次打开熔断器，确认恢复后再逐步消化积压。单条通知实际重试耗尽时才走图中的 DLT 分支。
 
 **先记住五件事：**
 
@@ -98,7 +98,7 @@ DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用�
 
 > At Madison-Davis, I worked on ECWS, a payment orchestration service used by banks and credit unions. My main responsibility was refactoring the orchestration module into a Java and Spring Boot service and separating receipt email delivery from the payment workflow.
 >
-> After we received a response from the Core service, we saved the workflow record and the notification outbox in one Oracle transaction. CDC published the committed events to Kafka, and the email consumer handled delivery and failure recovery through retries and a dead-letter path.
+> After we received a response from the Core service, we saved the workflow record and the notification outbox in one Oracle transaction. CDC published the committed events to Kafka, and our email consumer called the infrastructure team’s email API and handled retryable failures and dead-letter messages.
 >
 > I owned the application-side work and coordinated with the platform and QA teams on integration and releases. The Kafka and CDC platforms were operated by other teams. The key challenge was making notification delivery recoverable without keeping payment requests waiting for the email service.
 
@@ -125,11 +125,12 @@ DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用�
 - **Kafka/CDC 平台团队：** 维护平台与运行环境；我提供应用契约和集成需求。
 - **Core/Mainframe 团队：** 提供底层能力；我负责调用和处理应用侧结果。
 - **Reconciliation service：** 处理两类支付跨系统不一致；不属于我实现的组件。
+- **Infra 邮件团队：** 维护 SMTP，对应用提供邮件 API。我们的职责到 API 调用及其结果处理为止。内部是否有邮件路由由 Infra 确认。
 - **基础设施、QA、应用团队：** 协作发布与故障定位，具体事故中的行动需要用真实经历补充。
 
 **短答：**
 
-> My ownership was the orchestration and notification application flow. I implemented the changes within that scope and worked with the platform teams on the integration points. I didn't operate the Kafka or CDC platform, and I didn't implement the reconciliation service.
+> My ownership was the orchestration and notification application flow. Our consumer called the email API and handled retries. The infrastructure team managed SMTP behind that API. I implemented the changes within the application and worked with the platform teams on the integration points. I didn't operate the Kafka or CDC platform, and I didn't implement the reconciliation service.
 
 ### 2.3 哪些细节先放在待确认区
 
@@ -263,7 +264,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 **设计推演：** 原子条件更新、唯一约束或 claim 可以限制本地并发，但“某人拿到了处理权”不等于“邮件已经发成功”。项目真实 claim/lease 表尚未确认，不把这套设计说成亲手实现。
 
-**更深一层：** 如果供应商已接受邮件，进程却在记录结果前崩溃，本地锁仍无法消除外部结果不明的窗口。需要结合供应商幂等、结果查询或业务处置能力；不支持这些能力时，要明确重复和漏发之间的取舍。SMTP 最终接受也不等于收件人已看到邮件。[SMTP 接受与超时](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.2.6)
+**更深一层：** 如果邮件 API 已接受请求，consumer 却在记录结果前崩溃，本地锁仍无法消除外部结果不明的窗口。需要根据邮件 API 的契约核实幂等、结果查询或业务处置能力；不支持这些能力时，要明确重复和漏发之间的取舍。SMTP 最终接受也不等于收件人已看到邮件。[SMTP 接受与超时](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.2.6)
 
 ### Q07. Walk me through the consumer logic.
 
@@ -311,7 +312,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 | 认证、证书或全局配置故障 | 需要修复依赖/配置；避免每条消息持续制造流量 |
 | 请求可能已被接受，但响应丢失 | 结果未知，不能仅凭 timeout 就认定可安全重发 |
 
-**项目可讲：** 使用 retry topics、退避/jitter、DLT 与 controlled replay。精确等待几秒、几次重试留在参数参考里，除非已经查回实际配置。
+**项目可讲：** 退避和 jitter 把单条通知的重试时间错开。邮件 API 持续出现可重试故障时，retry consumer 通过 Redis 共享熔断状态，暂停补发。单条重试耗尽再进入 DLT，按需受控重放。精确等待几秒、几次重试留在参数参考里，除非已经查回实际配置。
 
 **为什么加 jitter？** 让大量失败事件不要同时重试。它不能代替总重试预算和依赖的流量控制。
 
