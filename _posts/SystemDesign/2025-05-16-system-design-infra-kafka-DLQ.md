@@ -5,6 +5,7 @@ description: "This blog introduces Kafka Dead Letter Queues (DLQs) and their rol
 tag: System Design
 category: "System Design"
 prime: false
+subcategory: Data and Transactions
 ---
 
 # Overview

@@ -4,6 +4,7 @@ title: "System design basic - media file uploading"
 date: 2025-01-25
 description: "System design"
 tag: System Design
+subcategory: Foundations
 ---
 
 # Large Video/Image Upload **(chunked/multipart uploads)**

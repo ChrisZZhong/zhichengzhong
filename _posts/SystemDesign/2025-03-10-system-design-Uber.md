@@ -4,6 +4,7 @@ title: "System design - Uber"
 date: 2025-03-10
 description: "Decode User backend architecture"
 tag: System Design
+subcategory: Product Systems
 ---
 
 # System Design - Uber

@@ -4,6 +4,7 @@ title: "System design - Payment - Amazon"
 date: 2025-03-27
 description: "Decode payment backend architecture"
 tag: System Design
+subcategory: Product Systems
 ---
 
 # Payment System - payment backend of e-commenrce app

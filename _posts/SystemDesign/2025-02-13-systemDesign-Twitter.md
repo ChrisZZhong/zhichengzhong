@@ -4,6 +4,7 @@ title: "System design - Twitter"
 date: 2025-02-13
 description: "System design"
 tag: System Design
+subcategory: Product Systems
 ---
 
 # System design - Twitter

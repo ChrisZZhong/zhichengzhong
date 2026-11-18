@@ -4,6 +4,7 @@ title: "System design - Rate limiter"
 date: 2025-04-10
 description: "Rate limit"
 tag: System Design
+subcategory: Foundations
 ---
 
 # Rate Limiter

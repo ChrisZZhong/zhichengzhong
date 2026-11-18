@@ -4,6 +4,7 @@ title: "System design - whatsapp (chat app)"
 date: 2025-01-15
 description: "System design"
 tag: System Design
+subcategory: Product Systems
 ---
 
 # Chat App

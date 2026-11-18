@@ -5,6 +5,7 @@ date: 2025-12-17
 description: ""
 tag: System Design
 prime: false
+subcategory: Product Systems
 ---
 
 ## Common Problems

@@ -4,6 +4,7 @@ title: "System design - Url Shorterner"
 date: 2025-04-15
 description: "Url Shorterner"
 tag: System Design
+subcategory: Product Systems
 ---
 
 ## clairify requirements & back-of-the-envelope estimation

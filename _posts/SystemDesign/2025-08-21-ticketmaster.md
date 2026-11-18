@@ -5,6 +5,7 @@ date: 2025-08-21
 description: "ticket Master"
 tag: System Design
 prime: false
+subcategory: Product Systems
 ---
 
 ###### Common Problems
