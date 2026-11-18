@@ -12,12 +12,12 @@ prime: false
 
 这份作为主要复习稿：先回忆架构，再讲清个人贡献，用 STAR 串起困难项目，最后练追问。具体 Pod/partition 数、重试秒数和 CDC 参数留在单独的设计参考文档，不放进主讲稿。
 
-**阅读顺序：**第 1 节架构 → 第 2 节 ownership → 第 3 节英文 STAR → 第 4 节 deep dive。
+**阅读顺序：** 第 1 节架构 → 第 2 节 ownership → 第 3 节英文 STAR → 第 4 节 deep dive。
 工作主线按现有个人材料整理；标为“设计推演/实现讨论”的部分用于准备机制问题，不代表已经在项目中实现。需要补回的个人细节集中在第 5 节。
 
 ## 1. 架构 recap：先在脑中走完一笔请求
 
-**一句话：**ECWS 是银行和 credit unions 使用的支付编排服务。我重构的是 orchestration 模块，并把 receipt email 从支付主流程拆成异步通知链路。
+**一句话：** ECWS 是银行和 credit unions 使用的支付编排服务。我重构的是 orchestration 模块，并把 receipt email 从支付主流程拆成异步通知链路。
 
 ### 1.1 迁移前后，一笔支付请求怎么走？
 
@@ -114,11 +114,11 @@ DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用�
 
 ### 2.2 我依赖的团队与系统
 
-- **DP team：**维护 DataPower；我通过提票、需求说明和联调打通应用流量。
-- **Kafka/CDC 平台团队：**维护平台与运行环境；我提供应用契约和集成需求。
-- **Core/Mainframe 团队：**提供底层能力；我负责调用和处理应用侧结果。
-- **Reconciliation service：**处理两类支付跨系统不一致；不属于我实现的组件。
-- **基础设施、QA、应用团队：**协作发布与故障定位，具体事故中的行动需要用真实经历补充。
+- **DP team：** 维护 DataPower；我通过提票、需求说明和联调打通应用流量。
+- **Kafka/CDC 平台团队：** 维护平台与运行环境；我提供应用契约和集成需求。
+- **Core/Mainframe 团队：** 提供底层能力；我负责调用和处理应用侧结果。
+- **Reconciliation service：** 处理两类支付跨系统不一致；不属于我实现的组件。
+- **基础设施、QA、应用团队：** 协作发布与故障定位，具体事故中的行动需要用真实经历补充。
 
 **短答：**
 
@@ -167,13 +167,13 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 
 ### 3.3 中文理解版
 
-**S：**旧系统跑在固定服务器上，付款编排和邮件通知耦合。高峰期出现过请求卡住和用户收不到 receipt 的反馈。这里先讲观察到的问题，不替它编一个已经验证的根因。
+**S：** 旧系统跑在固定服务器上，付款编排和邮件通知耦合。高峰期出现过请求卡住和用户收不到 receipt 的反馈。这里先讲观察到的问题，不替它编一个已经验证的根因。
 
-**T：**我接到的任务是重构 orchestration 模块。在这个范围内，我把邮件拆成异步链路，让付款不用等邮件，同时要保留通知失败后的恢复能力。
+**T：** 我接到的任务是重构 orchestration 模块。在这个范围内，我把邮件拆成异步链路，让付款不用等邮件，同时要保留通知失败后的恢复能力。
 
-**A：**技术上先处理本地双写问题：拿到 Core response 后，用一个 Oracle 短事务保存 workflow record 和 outbox，再由 CDC 发布到 Kafka。然后在通知 consumer 侧处理 retry、backoff/jitter、DLT 和受控 replay。协作上，我负责应用侧契约和集成，与平台、QA、基础设施团队完成联调、发布和排障。
+**A：** 技术上先处理本地双写问题：拿到 Core response 后，用一个 Oracle 短事务保存 workflow record 和 outbox，再由 CDC 发布到 Kafka。然后在通知 consumer 侧处理 retry、backoff/jitter、DLT 和受控 replay。协作上，我负责应用侧契约和集成，与平台、QA、基础设施团队完成联调、发布和排障。
 
-**R：**付款和邮件有了独立的执行与恢复路径。邮件失败可以单独排查和重试；迁移中的集中日志与 global trace ID 也帮助串联请求。先把这个功能结果讲清，再根据已核实材料补数字。
+**R：** 付款和邮件有了独立的执行与恢复路径。邮件失败可以单独排查和重试；迁移中的集中日志与 global trace ID 也帮助串联请求。先把这个功能结果讲清，再根据已核实材料补数字。
 
 ### 3.4 围绕这个故事练习的追问
 
@@ -217,19 +217,19 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 | Outbox + 定时 relay | 本地状态与意图一起提交 | 需处理轮询、重复发布、清理和时延 |
 | Outbox + CDC | 由提交后的数据库变化驱动发布 | 增加 CDC 平台依赖与恢复、schema 协作 |
 
-**适合本项目的解释：**采用 Outbox 来表达可靠的通知意图，再接入已有团队负责的 CDC/Kafka 能力。轮询也可以是合理方案；不能为了突出自己的方案，说它天然不可靠。
+**适合本项目的解释：** 采用 Outbox 来表达可靠的通知意图，再接入已有团队负责的 CDC/Kafka 能力。轮询也可以是合理方案；不能为了突出自己的方案，说它天然不可靠。
 
-**为什么是 Kafka？**项目已在使用其他团队维护的 Kafka/CDC 能力，个人工作是应用侧集成。可以解释持久化事件、独立消费和恢复的需求；若被要求与其他队列比较，再讨论组织已有平台、事件重放、顺序与运维成本，不能把全公司的平台选型写成自己独自决定。
+**为什么是 Kafka？** 项目已在使用其他团队维护的 Kafka/CDC 能力，个人工作是应用侧集成。可以解释持久化事件、独立消费和恢复的需求；若被要求与其他队列比较，再讨论组织已有平台、事件重放、顺序与运维成本，不能把全公司的平台选型写成自己独自决定。
 
-**继续追问：**当时最重要的约束是什么？哪个方案是你提出的？哪项验证支持了选择？这三项应来自自己的记忆，不能把上表当成当年开过评审会的证明。[Outbox 模式与 relay 选择](https://microservices.io/patterns/data/transactional-outbox.html)
+**继续追问：** 当时最重要的约束是什么？哪个方案是你提出的？哪项验证支持了选择？这三项应来自自己的记忆，不能把上表当成当年开过评审会的证明。[Outbox 模式与 relay 选择](https://microservices.io/patterns/data/transactional-outbox.html)
 
 ### Q03. What happens in the database transaction? What does it not cover?
 
-**项目主线：**收到 Core/Mainframe response 后，本地 Oracle 事务一起写 workflow record 和 outbox。对不需要通知的业务结果，还要按实际资格规则决定是否产生事件。
+**项目主线：** 收到 Core/Mainframe response 后，本地 Oracle 事务一起写 workflow record 和 outbox。对不需要通知的业务结果，还要按实际资格规则决定是否产生事件。
 
 这段事务不跨越前面的远程等待，也不包含邮件发送。它保证的是同一本地事务里的状态与通知意图，不是 Mainframe、Oracle、Kafka、邮件服务之间的全局原子性。
 
-**失败追问：**如果 Mainframe 已成功、本地写入失败，已有 reconciliation service 负责核实和修正；其具体修复到 outbox 的交接方式尚未确认。不能回答“Outbox 会自动解决所有不一致”。
+**失败追问：** 如果 Mainframe 已成功、本地写入失败，已有 reconciliation service 负责核实和修正；其具体修复到 outbox 的交接方式尚未确认。不能回答“Outbox 会自动解决所有不一致”。
 
 ### Q04. What if the payment call times out? Would you retry?
 
@@ -237,26 +237,26 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 
 材料确认请求里有 transactionID，后端提供同 ID 幂等行为，且已有 reconciliation 处理未知支付结果。具体哪个服务实现幂等、能否直接查询、如何重试，要按真实接口契约说明。
 
-**追问：**同一个 key 携带不同金额怎么办？这是契约问题，通常应识别冲突，而不是把不同请求当作同一次操作。这里是实现讨论，尚不能声称项目已有某个 payload hash 字段。
+**追问：** 同一个 key 携带不同金额怎么办？这是契约问题，通常应识别冲突，而不是把不同请求当作同一次操作。这里是实现讨论，尚不能声称项目已有某个 payload hash 字段。
 
 ### Q05. How did you handle idempotency? Payment and notification are the same thing?
 
 分成两层：
 
-- **支付幂等：**同一支付意图重试保留 transactionID；防止重复执行资金动作。
-- **通知幂等：**材料中的业务标识是 `transactionId + notificationType`；用于识别同一通知、支持去重；实际唯一范围、字段和并发协议仍需核实，不能仅凭这个 key 保证邮件不会重复发送。
+- **支付幂等：** 同一支付意图重试保留 transactionID；防止重复执行资金动作。
+- **通知幂等：** 材料中的业务标识是 `transactionId + notificationType`；用于识别同一通知、支持去重；实际唯一范围、字段和并发协议仍需核实，不能仅凭这个 key 保证邮件不会重复发送。
 
 Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有新的执行 trace，但不能随意变更其业务身份。
 
-**实现追问：**如果处理结果完全落在同一个数据库里，可以把“去重记录 + 业务写入”放在一个事务中，用唯一约束/原子操作防并发竞争。发邮件属于外部副作用，不能直接照搬这个保证。[Idempotent Consumer](https://microservices.io/patterns/communication-style/idempotent-consumer.html)
+**实现追问：** 如果处理结果完全落在同一个数据库里，可以把“去重记录 + 业务写入”放在一个事务中，用唯一约束/原子操作防并发竞争。发邮件属于外部副作用，不能直接照搬这个保证。[Idempotent Consumer](https://microservices.io/patterns/communication-style/idempotent-consumer.html)
 
 ### Q06. Why is checking “already sent” before sending not enough?
 
 两个 worker 可以同时查到“没发过”，然后各发一次。这是 check-then-act 竞争；即使存在唯一索引，也要问约束检查发生在副作用之前还是之后。
 
-**设计推演：**原子条件更新、唯一约束或 claim 可以限制本地并发，但“某人拿到了处理权”不等于“邮件已经发成功”。项目真实 claim/lease 表尚未确认，不把这套设计说成亲手实现。
+**设计推演：** 原子条件更新、唯一约束或 claim 可以限制本地并发，但“某人拿到了处理权”不等于“邮件已经发成功”。项目真实 claim/lease 表尚未确认，不把这套设计说成亲手实现。
 
-**更深一层：**如果供应商已接受邮件，进程却在记录结果前崩溃，本地锁仍无法消除外部结果不明的窗口。需要结合供应商幂等、结果查询或业务处置能力；不支持这些能力时，要明确重复和漏发之间的取舍。SMTP 最终接受也不等于收件人已看到邮件。[SMTP 接受与超时](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.2.6)
+**更深一层：** 如果供应商已接受邮件，进程却在记录结果前崩溃，本地锁仍无法消除外部结果不明的窗口。需要结合供应商幂等、结果查询或业务处置能力；不支持这些能力时，要明确重复和漏发之间的取舍。SMTP 最终接受也不等于收件人已看到邮件。[SMTP 接受与超时](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.2.6)
 
 ### Q07. Walk me through the consumer logic.
 
@@ -275,7 +275,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
   → 在完成或可靠交接之后，才允许推进已提交的恢复位点
 ```
 
-**项目已确认：**有 Email Consumer、重试与 DLT/replay、Oracle 回写去重的示意。以上是帮助解释正确性的逻辑骨架；真实状态表、ack mode、未知结果处置实现不能从图中自动补出。
+**项目已确认：** 有 Email Consumer、重试与 DLT/replay、Oracle 回写去重的示意。以上是帮助解释正确性的逻辑骨架；真实状态表、ack mode、未知结果处置实现不能从图中自动补出。
 
 具体读代码时看四个地方：输入契约、业务方法的完成含义、异常如何传播、框架何时确认。`Listener` 和 `EventConsumer` 的名字不同，不改变这些检查点。
 
@@ -304,9 +304,9 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 | 认证、证书或全局配置故障 | 需要修复依赖/配置；避免每条消息持续制造流量 |
 | 请求可能已被接受，但响应丢失 | 结果未知，不能仅凭 timeout 就认定可安全重发 |
 
-**项目可讲：**使用 retry topics、退避/jitter、DLT 与 controlled replay。精确等待几秒、几次重试留在参数参考里，除非已经查回实际配置。
+**项目可讲：** 使用 retry topics、退避/jitter、DLT 与 controlled replay。精确等待几秒、几次重试留在参数参考里，除非已经查回实际配置。
 
-**为什么加 jitter？**让大量失败事件不要同时重试。它不能代替总重试预算和依赖的流量控制。
+**为什么加 jitter？** 让大量失败事件不要同时重试。它不能代替总重试预算和依赖的流量控制。
 
 ### Q10. What happens after a message reaches the DLT? Is replay safe?
 
@@ -314,7 +314,7 @@ DLT 是失败处理入口，不是“放进去就解决了”。要有人或服�
 
 需要解释：谁能触发、范围怎样限定、如何限流、怎样知道已恢复。材料支持 controlled replay，但不支持声称已经有某个 REST endpoint、工单服务或审批实现。
 
-**追问：**修完 template 后重放，是否应该生成新的业务 key？普通重试/重放不应因技术修复变成新的通知意图；有意再次通知属于另一项业务决定。
+**追问：** 修完 template 后重放，是否应该生成新的业务 key？普通重试/重放不应因技术修复变成新的通知意图；有意再次通知属于另一项业务决定。
 
 ### Q11. Do you need ordering? Why not just use the same Kafka key?
 
@@ -322,7 +322,7 @@ DLT 是失败处理入口，不是“放进去就解决了”。要有人或服�
 
 Kafka 的分区顺序和业务副作用的完成顺序不是一回事。转到不同 retry topic 后，后续事件可能先完成；如果业务要求严格顺序，需重新评估阻塞、版本校验或其他顺序控制，接受相应吞吐代价。
 
-**本项目边界：**实际邮件顺序要求还需核实，不能把参考稿“无需严格顺序”当成已确认业务要求。[Spring Kafka 非阻塞重试与顺序](https://docs.spring.io/spring-kafka/reference/retrytopic/how-the-pattern-works.html)
+**本项目边界：** 实际邮件顺序要求还需核实，不能把参考稿“无需严格顺序”当成已确认业务要求。[Spring Kafka 非阻塞重试与顺序](https://docs.spring.io/spring-kafka/reference/retrytopic/how-the-pattern-works.html)
 
 ### Q12. What does CDC do, and what if it stops?
 
@@ -334,7 +334,7 @@ Kafka 的分区顺序和业务副作用的完成顺序不是一回事。转到�
 
 ### Q13. How would you implement the transaction in Spring?
 
-**实现讨论：**把 workflow 与 outbox 的同库写入放在一个清楚的 service 边界，由外部调用进入 Spring 管理的事务。远程 Core/邮件调用与这段本地写事务分开。
+**实现讨论：** 把 workflow 与 outbox 的同库写入放在一个清楚的 service 边界，由外部调用进入 Spring 管理的事务。远程 Core/邮件调用与这段本地写事务分开。
 
 常见检查点：
 
@@ -377,9 +377,9 @@ Mock 适合验证业务分支；真实事务、唯一约束、重投和框架交
 
 先说明“哪个事件代表什么业务意图”，再谈 JSON 字段。应能区分 event ID、transactionID、通知身份、trace ID 和 schema 版本。
 
-**设计推演：**优先兼容性增量，先部署能读新旧格式的一侧，验证缺字段/未知字段/错误枚举；重放旧事件也要能处理。实际 schema 和发布先后顺序尚未补全，不把这些原则改写成当年的上线记录。
+**设计推演：** 优先兼容性增量，先部署能读新旧格式的一侧，验证缺字段/未知字段/错误枚举；重放旧事件也要能处理。实际 schema 和发布先后顺序尚未补全，不把这些原则改写成当年的上线记录。
 
-**SOAP → REST 的真实背景：**SOAP 请求由独立 Translator 转成 REST，原生 REST 请求保持原样，两者都交给 `fs-internal-service` 编排。旧版本保留并给客户迁移窗口；DP 负责鉴权、限流与 routing。具体分批客户、回滚机制和是否全部迁完未确认。
+**SOAP → REST 的真实背景：** SOAP 请求由独立 Translator 转成 REST，原生 REST 请求保持原样，两者都交给 `fs-internal-service` 编排。旧版本保留并给客户迁移窗口；DP 负责鉴权、限流与 routing。具体分批客户、回滚机制和是否全部迁完未确认。
 
 ### Q17. Payment succeeded, but the customer did not get the email. How do you investigate?
 
@@ -400,7 +400,7 @@ Mock 适合验证业务分支；真实事务、唯一约束、重投和框架交
 
 扩 consumer 可能有用，但还受分区、单条耗时、数据库与供应商配额限制；如果依赖已过载，直接增加并发可能更差。
 
-**恢复追问：**故障消失后也要观察积压是否真的消退，避免补发风暴。这里讲判断顺序，不需要背 broker、Pod 和分区的精确数量。
+**恢复追问：** 故障消失后也要观察积压是否真的消退，避免补发风暴。这里讲判断顺序，不需要背 broker、Pod 和分区的精确数量。
 
 ### Q19. How do you know the change worked? What did you measure?
 
