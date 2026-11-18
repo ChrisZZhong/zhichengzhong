@@ -70,7 +70,7 @@ flowchart TD
 
 DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。
 
-**邮件 API 暂时不可用时。** consumer 调用 Infra 的邮件 API 发送回执，SMTP 由 Infra 维护。首次调用遇到可重试的故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用邮件 API 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向同一个邮件 API，形成 retry storm。熔断器只有 OPEN 和 CLOSED 两个状态。恢复到 CLOSED 后，retry consumer 可以继续调用邮件 API。单条通知实际重试耗尽时才走图中的 DLT 分支。
+**邮件 API 暂时不可用时。** consumer 调用 Infra 的邮件 API 发送回执，SMTP 由 Infra 维护。首次调用遇到可重试的故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用邮件 API 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向同一个邮件 API，形成 retry storm。熔断器只有 OPEN 和 CLOSED 两个状态。面试方案采用 60 秒冷却，OPEN 标记过期后恢复到 CLOSED，按总速率限制补发。阈值和失败场景见第 4 节 Q09。单条通知实际重试耗尽时才走图中的 DLT 分支。
 
 **先记住五件事：**
 
@@ -314,9 +314,34 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 **项目可讲：** 退避和 jitter 把单条通知的重试时间错开。邮件 API 持续出现可重试故障时，retry consumer 通过 Redis 共享熔断状态，暂停补发。单条重试耗尽再进入 DLT，按需受控重放。
 
-**单条回执的重试节奏。** 这份面试稿采用 5 次指数退避重试，每次调用前分别等待 **1、2、4、8、16 分钟**，并用 jitter 打散同一批通知。若熔断器保持 CLOSED，忽略 jitter、排队和调用耗时，5 次补发会落在首次失败后的第 1、3、7、15、31 分钟。若熔断器为 OPEN，待重试通知继续留在 Kafka，实际补发可能更晚。生产环境的精确配置和熔断恢复条件仍待核实。
+**单条回执的重试节奏。** 这份面试稿采用 5 次指数退避重试，每次调用前分别等待 **1、2、4、8、16 分钟**，并用 jitter 打散同一批通知。若熔断器保持 CLOSED，忽略 jitter、排队和调用耗时，5 次补发会落在首次失败后的第 1、3、7、15、31 分钟。若熔断器为 OPEN，待重试通知继续留在 Kafka，实际补发可能更晚。生产环境的精确配置仍待核实。
 
 **为什么加 jitter？** 让大量失败事件不要同时重试。它不能代替总重试预算和依赖的流量控制。
+
+#### 两态熔断器怎么实现？
+
+项目中，多个 retry consumer 通过 Redis 共享 OPEN / CLOSED 状态，保护同一个 Infra 邮件 API。下面是面试时可以展开的简化实现。阈值和 Lua 写法按设计起点讲，生产配置仍待核对。
+
+1. **统计实际调用。** 每个自然分钟用一个 Redis 桶，全体 retry consumer 共用。每次邮件 API 调用结束，总数加一；遇到超时或表示依赖暂时不可用的错误（如 503），失败数也加一。旧桶自动过期。无效地址等单封邮件错误不计入依赖故障数。
+2. **达到阈值就打开。** 在同一个桶里，实际调用至少 **20 次**且失败率 **≥50%**，就用 `SET email:retry:open 1 NX EX 60` 写入共享标记。一段短 Lua 脚本可把计数、计算阈值和写标记合并为原子操作。`NX` 让随后到达的失败结果不会反复刷新这 60 秒。[Redis SET](https://redis.io/docs/latest/commands/set/) · [Redis Lua 原子执行](https://redis.io/docs/latest/develop/programmability/eval-intro/)
+3. **冷却后再放行。** 发送前看标记。标记存在即 OPEN，暂停补发，通知留在 Kafka，跳过发送不消耗单条重试次数。标记过期即 CLOSED，按 Infra 可承受的总补发速率释放积压。如果新一轮调用再次达到阈值，就再打开 60 秒。
+
+**三个时间各管一件事。** 自然分钟决定哪些调用放在一起计算失败率；OPEN 的 60 秒从触发那一刻开始计时；1、2、4、8、16 分钟决定某一封通知最早什么时候再试。
+
+#### 围绕这段设计，面试官可能怎么追？
+
+公开面经里，候选人实际被问过如何避免重复通知、进程崩溃后怎么恢复，以及能给出什么重试保证。下面把这些问题套到支付回执上，并补充 Redis 和两态熔断的设计追问。[候选人记录：通知去重、崩溃与重试保证](https://leetcode.com/discuss/post/8377019/) · [候选人记录：通知集成与冷却策略](https://leetcode.com/discuss/post/8385519/)
+
+| 可能的英文追问 | 面试时怎么答 |
+|---|---|
+| Why do you need both backoff and a shared breaker? | 退避只推迟一封邮件。几千封邮件同时失败时，即使每封都在退避，下游仍可能过载。Redis 让所有实例一起暂停对同一 API 的补发。 |
+| Why 20 calls and 50%? Why a fixed window? | 1 次失败除以 1 次调用也是 100%。最小样本数避免小流量误触发；20 次里至少 10 次暂态故障才打开。固定分钟实现简单，但跨分钟的一波失败可能被拆开。最终阈值要用平时的重试流量、故障率和 Infra 容量来校准。 |
+| What if two workers trip it at the same time? | 所有实例更新同一桶；脚本原子执行，OPEN 标记只在不存在时创建。已经发出去的请求仍可能返回，熔断针对接下来要发的调用。 |
+| What if the API is still down after 60 seconds? | TTL 到期只代表允许再试。恢复时限制所有实例合计的补发速率，否则大家会一起冲向下游。持续故障会重新触发熔断；代价是每轮冷却结束后会放过一批失败请求。 |
+| What if Redis is unavailable? | 在这套设计里，我会暂时停掉补发并告警，把待处理通知留在 Kafka。回执允许延迟，支付已完成。读取 Redis 失败与成功读到“标记不存在”必须分开处理。 |
+| What if the API accepted the email but the response was lost? | timeout 可以计入依赖故障率，但这封邮件的发送结果未知。若 Infra API 支持幂等键，重试沿用同一 notification ID；若能查询就先核实结果，否则按 UNKNOWN 流程处置。 |
+| What if the consumer crashes while the breaker is open? | 消息留在 Kafka。原记录只有在处理完成或可靠交给 retry topic / DLT 后才推进提交位点。重启后可能再次读到同一通知，仍沿用同一业务身份。 |
+| How would you verify that recovery is working? | 同时看邮件 API 的暂态失败率、实际补发速率、熔断状态和最老待发通知的年龄。错误率下降但没有出站调用，只能说明还在暂停；恢复后要看到成功发送，积压也逐步下降。 |
 
 ### Q10. What happens after a message reaches the DLT? Is replay safe?
 
