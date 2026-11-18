@@ -4,7 +4,7 @@ title: "System design basic - consistent hasing"
 date: 2025-04-11
 description: "consistent hasing"
 tag: System Design
-subcategory: Foundations
+subcategory: Design Patterns
 ---
 
 ## Round Robin

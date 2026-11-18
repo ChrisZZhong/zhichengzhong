@@ -3,7 +3,8 @@ layout: post
 title: "Remove Duplicated elements"
 date: 2025-02-24
 description: "Remove Duplicated elements"
-tag: Leetcode Problem
+tag: Algorithms
+subcategory: LeetCode Problems
 ---
 
 ## [27. Remove Element](https://leetcode.cn/problems/remove-element/description/)

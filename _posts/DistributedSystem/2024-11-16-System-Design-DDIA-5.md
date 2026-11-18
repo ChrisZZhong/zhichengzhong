@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "System design DDIA digest - 5. Replication"
+title: "DDIA Notes: Chapter 5, Replication"
 date: 2024-11-16
-description: "System design"
-tag: System Design
-subcategory: Data and Transactions
+description: "Book notes on leader and follower replication, failover, replication lag, and log formats."
+tag: Distributed System
+subcategory: Core Systems
 ---
 
 # 5. Replication

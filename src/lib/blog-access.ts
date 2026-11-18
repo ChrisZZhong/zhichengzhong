@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-export const passwordSalt = 'ff28f8a10a28b84fc7c012bf5364617d';
-const verifier = Buffer.from('bcb8feca3c0a844bfd777f9e72b96e049535b681127c9d61756acd5d94d71e36', 'hex');
+export const passwordSalt = 'd2ef779cf5c5f932238cb41ed6fec894';
+const verifier = Buffer.from('088416eba7062e7bd0089ca6586ec7e322c7c462645e4b299a7c43a1f2641595', 'hex');
 export const accessCookie = 'blog-interviews-access';
 
 export function validAccessProof(value?: string): boolean {

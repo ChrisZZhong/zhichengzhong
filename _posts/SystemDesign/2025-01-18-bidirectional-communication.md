@@ -4,7 +4,7 @@ title: "System design basic - HTTP Request vs HTTP Long-Polling vs WebSocket vs 
 date: 2025-01-18
 description: "System design"
 tag: System Design
-subcategory: Foundations
+subcategory: Design Patterns
 ---
 
 HTTP Request vs HTTP Long-Polling vs WebSocket vs Server-Sent Events

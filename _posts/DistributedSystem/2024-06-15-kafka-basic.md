@@ -76,4 +76,10 @@ flowchart TD
 
 Claim eligible rows atomically if multiple workers poll the table. For a limit of three retries, allow attempts while the retry count is below three. A crash after publishing but before marking the row as sent can cause duplicate replay. Keep a stable ID and make the receiver idempotent. A broker acknowledgement means the record was published, while a separate signal is needed to know the business operation succeeded. [Further reading on Kafka dead-letter queues](https://www.kai-waehner.de/blog/2022/05/30/error-handling-via-dead-letter-queue-in-apache-kafka/).
 
+### Operating a Kafka dead-letter topic
+
+The consumer application, framework, or connector decides when a record goes to a dead-letter topic. Retry a transient outage with a limit. Quarantine incompatible schemas, malformed payloads, and permanent validation errors for investigation. Advance the source offset only after the failure record is durably handed off. Check how publish failures are surfaced by your handler. [Spring Kafka error handling](https://docs.spring.io/spring-kafka/reference/kafka/annotation-error-handling.html).
+
+Monitor new failed records by source and reason, the age of the oldest unresolved record, retention headroom, and replay outcomes. If failures spike after a deployment, check schema and connector configuration before replaying. Once the fix is in place, replay a small batch and check the outcomes before scaling up. Confluent Cloud sink connectors can expose failure details in dead-letter record headers. [Confluent connector DLQ documentation](https://docs.confluent.io/cloud/current/connectors/dead-letter-queue.html).
+
 For cache projections, reconciliation and stateful stream processing, continue with [Event Processing with Kafka, Redis, and Flink](/blog/DistributedSystem/2025-03-04-Flink).

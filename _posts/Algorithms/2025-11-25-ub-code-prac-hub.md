@@ -1,10 +1,11 @@
 ---
 layout: post
-title: "UB coding prac hub & other"
+title: "Uber Coding OA: Practice Hub and Follow-ups"
 date: 2025-12-19
 description: "UB coding prac hub"
-tag: OA
+tag: Algorithms
 prime: false
+subcategory: Interview OA
 ---
 
 ## [programhelp](https://programhelp.net/?s=uber)

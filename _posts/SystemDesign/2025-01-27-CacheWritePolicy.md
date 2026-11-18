@@ -4,7 +4,7 @@ title: "System design basic - cache write policy"
 date: 2025-01-25
 description: "System design"
 tag: System Design
-subcategory: Foundations
+subcategory: Design Patterns
 ---
 
 <img src = "/images/System-Design/CacheWritePolicy.png">

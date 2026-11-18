@@ -1,10 +1,11 @@
 ---
 layout: post
-title: ByteDance
+title: "ByteDance Coding OA: Practice List"
 date: 2026-02-27
 description: ""
-tag: OA
+tag: Algorithms
 prime: false
+subcategory: Interview OA
 ---
 
 单调栈 / Trie Tree复习/ 拓扑排序 / BFS / DJ / 计算器

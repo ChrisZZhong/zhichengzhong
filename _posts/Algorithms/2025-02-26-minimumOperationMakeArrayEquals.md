@@ -3,7 +3,8 @@ layout: post
 title: "Minimum Operations to Make All Array Elements Equal"
 date: 2025-02-26
 description: "Minimum Operations to Make All Array Elements Equal"
-tag: Leetcode Problem
+tag: Algorithms
+subcategory: LeetCode Problems
 ---
 
 ## [2602. Minimum Operations to Make All Array Elements Equal](https://leetcode.cn/problems/minimum-operations-to-make-all-array-elements-equal/description/)

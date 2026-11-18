@@ -4,7 +4,8 @@ layout: post
 title: "UB Phone"
 date: 2025-06-24
 description: "interview problems"
-tag: Interviews
+tag: Algorithms
+subcategory: Interview OA
 prime: false
 ---
 

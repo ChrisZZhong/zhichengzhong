@@ -4,6 +4,7 @@ title: "Pan cake sorting"
 date: 2023-08-05
 description: "pan cake sorting"
 tag: Algorithms
+subcategory: LeetCode Problems
 ---
 
 # 烧饼排序

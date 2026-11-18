@@ -3,8 +3,9 @@ layout: post
 title: "UB System Design Prep"
 date: 2025-12-19
 description: "UB SD"
-tag: OA
+tag: System Design
 prime: false
+subcategory: Product Systems
 ---
 
 ## [programhelp](https://programhelp.net/?s=uber)

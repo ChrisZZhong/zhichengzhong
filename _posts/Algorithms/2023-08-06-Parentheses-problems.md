@@ -4,6 +4,7 @@ title: "Parentheses problems"
 date: 2023-08-06
 description: "Parentheses problems"
 tag: Algorithms
+subcategory: LeetCode Problems
 ---
 
 # Parentheses problems

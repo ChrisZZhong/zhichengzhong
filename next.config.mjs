@@ -33,6 +33,30 @@ const mergedDistributedSystemPosts = {
   '2024-09-04-Newman-Regression': '2023-06-25-CICDpipeline#newman-api-regression-reports',
 };
 
+const reclassifiedPosts = {
+  '/blog/SystemDesign/2025-05-16-system-design-infra-kafka-DLQ': '/blog/DistributedSystem/2024-06-15-kafka-basic#operating-a-kafka-dead-letter-topic',
+  '/blog/SystemDesign/2024-11-16-System-Design-DDIA-5': '/blog/DistributedSystem/2024-11-16-System-Design-DDIA-5',
+  '/blog/DistributedSystem/2023-06-24-transaction-in-microservices': '/blog/SystemDesign/2023-06-24-transaction-in-microservices',
+  '/blog/Algorithms/2025-11-24-prefix-matrix-sum': '/blog/Algorithms/2023-09-20-prefix-sum#matrix-prefix-sum',
+  '/blog/LeetcodeProblem/2023-10-21-LeetCode-Daily': '/blog/Algorithms/2023-10-21-LeetCode-Daily',
+  '/blog/LeetcodeProblem/2025-02-24-LC-removeDuplicatedElements': '/blog/Algorithms/2025-02-24-LC-removeDuplicatedElements',
+  '/blog/LeetcodeProblem/2025-02-26-minimumOperationMakeArrayEquals': '/blog/Algorithms/2025-02-26-minimumOperationMakeArrayEquals',
+  '/blog/LeetcodeProblem/2025-03-07-lc75': '/blog/Algorithms/2025-03-07-lc75',
+  '/blog/OA/2025-11-25-ub-code-prac-hub': '/blog/Algorithms/2025-11-25-ub-code-prac-hub',
+  '/blog/OA/2025-12-09-ub': '/blog/Algorithms/2025-12-09-ub',
+  '/blog/OA/2025-12-19-ub-code-final': '/blog/Algorithms/2025-12-19-ub-code-final',
+  '/blog/OA/2025-12-19-ub-code-hello-interview': '/blog/Algorithms/2025-12-19-ub-code-final',
+  '/blog/OA/2025-12-19-ub-code-leetcode': '/blog/Algorithms/2025-12-19-ub-code-final',
+  '/blog/OA/2025-12-19-ub-system-design': '/blog/SystemDesign/2025-12-19-ub-system-design',
+  '/blog/OA/2026-03-01-bytedance-leetcode-problems.md': '/blog/Algorithms/2026-03-01-bytedance-leetcode-problems',
+  '/blog/Interviews/2025-11-13-Uber-Phone': '/blog/Algorithms/2025-11-13-Uber-Phone',
+};
+
+const mergedAlgorithmCategories = {
+  LeetcodeProblem: 'LeetCode Problems',
+  OA: 'Interview OA',
+};
+
 function postRedirects(category, posts, aliases = [category]) {
   return Object.entries(posts).flatMap(([source, destination]) =>
     aliases.map((alias) => ({
@@ -51,6 +75,17 @@ const nextConfig = {
     return [
       ...postRedirects('Java%26Spring', mergedJavaSpringPosts, ['Java&Spring', 'Java%26Spring']),
       ...postRedirects('DistributedSystem', mergedDistributedSystemPosts),
+      ...Object.entries(reclassifiedPosts).map(([source, destination]) => ({
+        source,
+        destination,
+        permanent: true,
+      })),
+      ...Object.entries(mergedAlgorithmCategories).map(([tag, subcategory]) => ({
+        source: '/blog',
+        has: [{ type: 'query', key: 'tag', value: tag }],
+        destination: `/blog?tag=Algorithms&subcategory=${encodeURIComponent(subcategory)}`,
+        permanent: true,
+      })),
     ];
   },
   webpack: (config) => {

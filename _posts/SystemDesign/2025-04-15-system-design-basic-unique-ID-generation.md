@@ -4,7 +4,7 @@ title: "System design basic - Unique ID generator"
 date: 2025-04-15
 description: "ID generation"
 tag: System Design
-subcategory: Foundations
+subcategory: Infrastructure
 ---
 
 ## Common way to generate Unique ID in distributed system

@@ -3,8 +3,8 @@ layout: post
 title: "Cross-Service Consistency with Two-Phase Commit, Sagas, and Outbox"
 date: 2023-06-24
 description: "Choose between a coordinated commit and local transactions with compensation using an order and inventory example."
-tag: Distributed System
-subcategory: Core Systems
+tag: System Design
+subcategory: Design Patterns
 ---
 
 Suppose the order service owns orders, inventory owns reservations, and payments owns charges. A database transaction inside one service cannot atomically update the other two. Start by deciding what must be true immediately and what can converge after an asynchronous workflow.

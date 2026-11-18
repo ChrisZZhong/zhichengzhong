@@ -5,6 +5,7 @@ date: 2025-11-24
 description: ""
 tag: Algorithms
 prime: false
+subcategory: LeetCode Problems
 ---
 
 ## Note that MST only exists in undirected graph
