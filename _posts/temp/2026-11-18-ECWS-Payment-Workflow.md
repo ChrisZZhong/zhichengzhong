@@ -4,7 +4,6 @@ title: "ECWS Payment Workflow Before and After Migration"
 date: "2026-11-18"
 description: "How a payment request reaches Core and how its receipt can be retried independently."
 tag: temp
-password: interviews
 ---
 
 I worked on the ECWS payment orchestration service used by banks and credit unions. I refactored the orchestration module into a Java and Spring Boot service and moved receipt email delivery out of the payment request path.
