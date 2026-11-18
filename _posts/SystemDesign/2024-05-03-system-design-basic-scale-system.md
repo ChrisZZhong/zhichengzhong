@@ -41,10 +41,16 @@ load balancer
 
 ### 5. Cache
 
-<img src="/images/System-Design/scale-route/5.png">
+A cache between the application and the database reduces repeated reads. A CDN can cache static resources closer to readers.
 
-Add cache between DB and server, reduce response time
-Add CDN to cache static resources
+#### Cache write policy
+
+| Policy | How writes work | Tradeoff |
+| --- | --- | --- |
+| Cache-aside with invalidation | Write to the database and invalidate the cached key. A later read refills it. | The application owns invalidation and has to account for stale reads around concurrent updates. |
+| Write-through | A write updates the cache and durable store synchronously. | Readers can use the updated cache value, with durable storage on the write path. |
+| Write-behind | The cache accepts a write and persists it asynchronously. | Writes can be batched, with recovery needed for unflushed updates. |
+| Write-around | Write directly to storage and skip warming the cache. Invalidate any cached copy of the key. | Helps avoid filling the cache with write-heavy data that is rarely read. |
 
 ### 6. Move session data to persistent database
 
@@ -78,6 +84,8 @@ Benefit:
 
 When slave down, master take its job (if other slaves not available), new slave node take the job back, replace old node
 When master down, a slave promote to master, a new slave node will take old slave node job
+
+For failover, lag, and replication methods, see [DDIA Chapter 5: Replication](/blog/DistributedSystem/2024-11-16-System-Design-DDIA-5#leader-follower-master-slave-replication).
 
 ### DB scaling
 

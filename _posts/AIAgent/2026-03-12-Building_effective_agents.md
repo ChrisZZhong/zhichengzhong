@@ -30,6 +30,12 @@ Two things to focus on during development:
 1. Customize capabilities to fit your needs (MCP, A2A).
 2. Give the LLM interfaces that are easy to use and well documented.
 
+### Agent Harness Engineering
+
+The overview below shows where orchestration, tool execution, state, and observability fit in a larger agent application.
+
+![Agent harness architecture reference](/media/AIAgent/Agent_Architecture.jpg)
+
 ## Five workflow patterns
 
 ### 1) Prompt chaining

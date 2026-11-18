@@ -1,11 +1,30 @@
 ---
 password: interviews
 layout: post
-title: "Java Backend Interview problems"
+title: "Java Backend and Full-Stack Interview Notes"
 date: 2023-10-11
-description: "Software Interview problems"
+description: "Interview notes on core Java, concurrency, Spring, persistence, testing, and service operations."
 tag: Interviews
 ---
+
+## Study links
+
+- [Core Java and concurrency](#core-java)
+- [Java 8](#java-8)
+- [Design patterns](#design-pattern)
+- [Database and persistence](#database)
+- [Spring](#spring)
+- [Testing](#testing)
+- [Microservices and cloud](#microservices-and-cloud)
+
+<span id="java-api"></span>
+<span id="java-basic-java-8"></span>
+<span id="project-story"></span>
+<span id="angular"></span>
+<span id="react"></span>
+<span id="javascript"></span>
+
+For quick syntax lookup, see [Java API](/blog/Java%26Spring/2022-03-07-Java-API). For focused review, see [Java fundamentals](/blog/Java%26Spring/2023-01-20-Java-basic), [Java Streams](/blog/Java%26Spring/2023-03-30-Java8-Stream), [Angular](/blog/Frontend/2023-01-18-Angular), [React](/blog/Frontend/2023-02-13-React), and [JavaScript](/blog/Frontend/2023-11-13-JavaScript). For the project walkthrough, see [ECWS project interview notes](/blog/Interviews/2026-11-17-MadisonDavisProjectInterview).
 
 # Core Java
 
@@ -745,6 +764,8 @@ public static List<Trainee> getTraineesByPhoneNumber(String phone){
 
 ### Transaction Management
 
+For transactions that cross service boundaries, see [Two-Phase Commit, Sagas, and Outbox](/blog/SystemDesign/2023-06-24-transaction-in-microservices).
+
 `Transaction` is a set of operations that are executed as a single unit of work. If one operation fails, the whole transaction fails. In JDBC, the Connection interface provides methods to manage transactions. There are three methods in the Connection interface: `setAutoCommit()`, `commit()` and `rollback()`.
 
 ```Java
@@ -862,54 +883,156 @@ There are two level Caching in Hibernate:
 
 - `Second Level` cache is disabled by default, it is a higher level, cross-multi session. When query something, Hibernate will execute a query like select all fields from table where …, and cache all objects in second level cache, when hibernate need to query object by id, it will first check the first level cache, if not contains, then check the second level cache, if not contains too, it will fetch from database and put it into the second level cache. Second level cache is only used for querying by ID of Hibernate objects.
 
+## JPA (Java Persistence API)
+
+JPA is a `specification` of Java. It is used to persist data between Java object and relational database. It doesn't provide any implementation, so it need a `provider` to implement it like `Hibernate`, `EclipseLink`, `TopLink`, etc.
+
+1.  ORM mapping between Java object and relational database
+
+    - `@Entity` annotation is used to map Java object to relational database
+    - `@Table` annotation is used to map Java object to relational database table
+    - `@Column` annotation is used to map Java object to relational database column
+    - `@Id` annotation is used to map Java object to relational database primary key
+    - `@Transient` annotation is used to ignore the field when mapping Java object to relational database
+
+2.  JPQL (Java Persistence Query Language)
+
+    - JPQL is a query language which is used to query data from relational database
+    - JPQL is similar to SQL, but it is object-oriented
+    - JPQL is database independent
+
+3.  EntityManager
+    - EntityManager is used to manage the lifecycle of entity, and perform CRUD operations.
+
+For the mapping and a working repository example, see [Spring Data JDBC and JPA](/blog/Java%26Spring/2023-04-13-SpringDataJPA#jpa-and-spring-data-repositories).
+
+## Spring Data JPA
+
+Spring Data JPA is a `framework` which is built on top of JPA. It is used to simplify the development of JPA application.
+
+## Spring Data Repository
+
+Spring Data Repository has different interfaces, and each interface is used to perform different operations.
+
+1. `Repository` is the central interface in Spring Data repository abstraction. It is a `marker interface` to capture the types to work with and to help you to discover interfaces that extend this one. It is not used directly.
+
+2. `CrudRepository` provides CRUD operations, it extends `Repository` interface.
+
+   ```Java
+   public interface CrudRepository<T, ID> extends Repository<T, ID> {
+       // Note that the ID here is a serializable which represent the id of the Entity
+
+       <S extends T> S save(S entity);
+       Optional<T> findById(ID primaryKey);
+       Iterable<T> findAll();
+       long count();
+       void delete(T entity);
+       boolean existsById(ID primaryKey);
+       // … more functionality omitted.
+   }
+   ```
+
+3. `PagingAndSortingRepository` provides `pagination` and `sorting` operations, it extends `CrudRepository` interface.
+
+   ```Java
+   public interface PagingAndSortingRepository<T, ID> extends CrudRepository<T, ID> {
+       Iterable<T> findAll(Sort sort);
+       Page<T> findAll(Pageable pageable);
+   }
+   ```
+
+4. Query Feature
+
+   Using Spring Data Repository, we can define the query method by using the naming convention. In this way, we don't need to write the query statement and the implementation of the query method.
+
+   The machanism strips the prefixes `find…By`, `read…By`, `query…By`, `count…By`, and `get…By` from the method and starts parsing the rest of it.
+
+   ```Java
+   interface PersonRepository extends Repository<User, Long> {
+
+   List<Person> findByEmailAddressAndLastname(EmailAddress emailAddress, String lastname);
+
+   // Enables the distinct flag for the query
+   List<Person> findDistinctPeopleByLastnameOrFirstname(String lastname, String firstname);
+   List<Person> findPeopleDistinctByLastnameOrFirstname(String lastname, String firstname);
+
+   // Enabling ignoring case for an individual property
+   List<Person> findByLastnameIgnoreCase(String lastname);
+   // Enabling ignoring case for all suitable properties
+   List<Person> findByLastnameAndFirstnameAllIgnoreCase(String lastname, String firstname);
+
+   // Enabling static ORDER BY for a query
+   List<Person> findByLastnameOrderByFirstnameAsc(String lastname);
+   List<Person> findByLastnameOrderByFirstnameDesc(String lastname);
+   }
+   ```
+
+   We can also use `@Query` annotation to define the query method.
+
+   ```Java
+   interface PersonRepository extends Repository<User, Long> {
+       @Query("select u from User u where u.emailAddress = ?1")
+       User findByEmailAddress(String emailAddress);
+   }
+   ```
+
+## NoSQL & MongoDB
+
+SQL databases based on relational data models. well-defined structure with clear relationships and constraints
+
+NoSQL (not only sql) databases use various data models, such as key-value, document, columnar, or graph. They provide flexible schemas that allow for dynamic and unstructured data. Like mongoDB, redis, Bigtable
+
+Use Relational database:
+
+- needs strong transactional support
+- data has a well-defined structure with clear relationships
+- requires complex queries involving multiple tables, joins, and aggregations
+
+Use Non-Relational DB:
+
+- Data is unstructured, like LinkedIn, user profile, each user may have different sections, if you put it in RDB, there will be many empty fields, so using Nosql will decrease the space and increase the speed for reading.
+- Need high-speed read and write operations
+- Distributed and Cloud Environments: NoSQL databases are well-suited for distributed and cloud-based architectures, allowing you to distribute data across multiple nodes or data centers.
+
 # Spring
 
 ## Spring Framework & Spring Boot
 
 ### Spring Framework
 
-`Spring Framework`'s core feature is **`Dependency Injection (IOC)`**, **We don't need to initialize the object, spring framework will manage and inject the dependencies for us**. It also provides modules like `AOP`, `JDBC`, `ORM`, `MVC`, `Security` etc.
+<span id="spring-framework-ioc"></span>
 
-1. [Two types of IOC container](#two-types-of-ioc-containers):
+Spring's IoC container creates and wires application components. Spring Framework also provides facilities for data access, MVC, AOP, and transaction management.
 
-   - `BeanFactory` : `lazy loaded`, `XML`
-   - `ApplicationContext` : `eager loaded`, `XML & annotation`
+#### IoC container types
 
-2. [IOC container life cycle](#ioc-container-life-cycle):
+<span id="two-types-of-ioc-containers"></span>
 
-   - When Spring application starts, IOC container is instantiated(BeanFactory or Application Context)
-   - IOC container read the bean class from config files such as XML or annotations like @ComponentScan
-   - Create bean instance based on the Bean definition
-   - When a bean is required, inject the required dependencies.
-   - Post-Post-initialization Pre-destruction and bean call back will be executed, then is the bean destruction when spring application shut down, then the container will shut down.
+`BeanFactory` provides the basic container services. `ApplicationContext` adds features such as resource loading, event publication, and commonly eager initialization of non-lazy singleton beans.
 
-3. [Bean scopes](#bean-scopes):
+#### IoC container life cycle
 
-   - `singleton` (default)
-   - `prototype`
-   - `request`
-   - `session`
-   - `global-session`
+The container reads bean definitions, instantiates beans, injects dependencies, and invokes initialization callbacks. Bean post-processors can act before or after initialization and may wrap beans with proxies. Container shutdown invokes destruction callbacks for beans whose lifecycle the container manages.
 
-4. [Three types of dependency injection](#three-types-of-dependency-injection): (Optional)
+#### Bean & Bean scopes
+
+<span id="bean-scopes"></span>
+
+Singleton is the default and means one managed instance per bean definition per container. Prototype creates a new instance when requested from the container. In a web application, request and session scopes tie the instance to an HTTP request or session.
+
+#### Dependency Injection (Ambiguous)
+
+<span id="three-types-of-dependency-injection"></span>
+
+Constructor injection makes required dependencies explicit. Setter injection can express optional dependencies. Field injection makes dependencies less visible. When several beans implement the same interface, use `@Qualifier` to select one or `@Primary` for a default candidate.
 
 ### Spring Boot
 
-`Spring Boot`'s core feature is **`Auto Configuration`**, which is used to reduce the time for setting up configurations.
+<span id="spring-boot-auto-configuration"></span>
 
-1. talk about spring configuration is complex, spring boot enables auto configuration, which is to reduce the time for setting up configurations.
+Boot auto-configuration uses the classpath, application properties, and existing beans to configure common components. Starters group dependency sets for use cases such as web, security, and JDBC. `@SpringBootApplication` combines configuration, auto-configuration, and component scanning.
 
-2. For the pom file, spring Boot will generate default dependencies for us like security, web, jdbc. We can also override the default dependencies by providing configuration files.
-
-3. application.properties file, it is key value pairs, we can override the default configuration by providing the key value pairs in the application.properties file. like the data source url, username, password.
-
-4. @SpringBootApplication annotation
-
-   - `@EnableAutoConfiguration` : Allows auto configuration based on the .jar dependencies in the pom.xml file
-
-   - `@ComponentScan` : scan the `@Component` and their child class like @Controller, @Repository under the basic folder.
-
-   - `@Configuration` : Spring Boot will only scan @Bean third party class under the @Configuration class. This is used to add extra beans to the spring container.
+See [Spring Core and Boot](/blog/Java%26Spring/2023-04-07-Spring-Boot).
 
 ## Spring MVC
 
@@ -977,6 +1100,87 @@ JWT mainly contains three parts:
 
 - Signature: is used to verify that the sender of the JWT is who it says it is and to ensure that the message wasn’t changed along the way. (Created by hashing the header and the payload with a secret key)
 
+## Spring Scheduler (cron expression)
+
+execute tasks for each period of time. `@Scheduled` annotation is used to specify the cron expression.
+
+- `@Scheduled(fixedRate = 1000)`: execute the task every 1000ms.
+- `@EnableScheduling`: enable the scheduling in the application.
+
+What if two servers are running the same task? How to `avoid duplicate execution`?
+
+Distributed Lock: use `Redis` to implement distributed lock. Acquire a distributed lock before executing the scheduled task.
+
+## Cache - (stale data)
+
+Problem: When we update the data in the database, the cache is not updated. So the data in the cache is stale.
+
+- Set expiration times for cached items.
+- Use `@CacheEvict` to remove the cache when updating the data.
+- Use `@CachePut` to update the cache when updating the data.
+
+## Spring Profile (switch between different environments)
+
+Spring profile is used to `configure` the application for different environments.
+
+We can use `@Profile` to specify the profile for the class or method. We can use `spring.profiles.active` to specify the active profile in the application.properties file.
+
+- Add `@Profile` annotation to the configuration class.
+
+  ```java
+    @Configuration
+    @Profile("dev")
+    public class DevConfig {
+        // ...
+        @Value("${spring.datasource.url}")
+        private String url;
+    }
+  ```
+
+- Add `spring.profiles.active` in `application.properties` file.
+
+  ```properties
+    spring.profiles.active=dev
+  ```
+
+## Rest Controller & Input Validation (BindingResult) & RestTemplat
+
+### @RestController VS @Controller
+
+`@RestController` is a convenience annotation that combines `@Controller` and `@ResponseBody`. It is used for building RESTful web services that return data in response to HTTP requests in JSON/XML. We don't need to add `@ResponseBody` to our request mapping methods one by one.
+
+`@Controller` is a common annotation that is used to mark a class as Spring MVC Controller while `@ResponseBody` is used to indicate that the return value of a method should be used as the response body of the request.
+
+### @RequestBody VS @ResponseBody
+
+`@RequestBody` is used to map the content of an HTTP request body to a Java object, so you can access the data sent by the request in Java.
+
+`@ResponseBody` is used to map the return value of a method to an HTTP response body, so you can return Java objects as data in the response.
+
+### How to validate the values of the request body? How does BindingResult work?
+
+1. For the DTO classes, we can use `@NotNull`, `@NotEmpty`, `@Size`, etc. to validate the values of the fields.
+
+2. In the controller method, we can use `@Valid` to validate the values of the request body.
+
+`BindingResult` is used to validate the values of the request body. It is used to store the result of the validation and has to be placed right after the request body parameter. We can use `hasErrors()` to check if there is any error and handle the error in the way we want.
+
+### RestTemplate
+
+`RestTemplate` is a tool provided by Spring to simplify the HTTP request to external Restful API.
+
+The advantage is that it is easy to use, but the disadvantage is that the request URL is hardcoded, not good for decoupling. Also, it is synchronous, which means that the thread will be blocked until the request is finished.
+
+## RESTFul API 6 principles
+
+Review the resource contract and statelessness constraints in [API and Service Communication](/blog/ComputerNetwork/2023-04-12-RESTFulAPI#restful-api-6-principles).
+
+## SOAP
+
+Review the envelope and the HTTP transport in [REST vs SOAP](/blog/ComputerNetwork/2023-04-12-RESTFulAPI#soap).
+
+# Testing
+
 ## Mockito
 
 `Mockito` is a `mocking framework` used for `unit testing` of Java applications. When we write unit tests, we need to mock the `external dependencies`. Mockito provide an easy way to mock the dependencies.
@@ -994,6 +1198,35 @@ JWT mainly contains three parts:
 They both are used to create a fake object. `@Mock` create object not related to the spring framework.
 
 When testing controller, it need us to start the Spring Boot application. We use `@MockBean` to create a fake object that is part of the Spring context. such as beans declared in the application's configuration or beans created by Spring Boot auto-configuration.
+
+### ArgumentCaptor receive the parameter of the mocked method
+
+We can use `ArgumentCaptor` to capture the parameter of the mocked method.
+
+```Java
+@Captor
+private ArgumentCaptor<User> userCaptor;
+
+@Test
+public void testCreateUser() {
+   User user = new User();
+   user.setName("Chris");
+   user.setEmail("xx@gmail.com");
+   userService.createUser(user);
+   verify(userDao).save(userCaptor.capture());
+   assertEquals("Chris", userCaptor.getValue().getName());
+}
+```
+
+# Microservices and cloud
+
+## AWS Lambda & Step Functions
+
+AWS Lambda is a computer service that allows us to run code without deploying and managing server. It is event-driven. Events, such as `changes in an S3 bucket` or an `API Gateway request`, trigger the execution of this function. It is used to run small tasks like `get real time data flow`, with 15 minutes maximum execution time.
+
+AWS Step function is a serveless workflow service which allows us to coordinate multiple tasks such as lambda functions. With the help of step functions we can easily visualize our lambda function workflow and make adjustments based on our needs.
+
+Limitation : limited memory and tempary storage. max execution time is 15 minutes. should optimize the usage of lambda or it will be expensive.
 
 ## Monolithic vs Microservices
 
@@ -1028,3 +1261,25 @@ Microservices communicate with each other using HTTP requests. Each microservice
 We can use a `message broker` like `RabbitMQ` or `Kafka` to send messages between microservices to communicate `Asychonously`.
 
 For example, when a user creates a new account, we can send a message to the email service to send a welcome email and to the notification service to send a notification to the user.
+
+## API Gateway
+
+A gateway exposes a stable service entry point and can route, authenticate, or rate-limit requests. See [API gateways and service discovery](/blog/DistributedSystem/2024-08-05-Failures-in-distributed-systems#api-gateways-and-service-discovery).
+
+## Application Monitoring (Actuator & Eureka)
+
+<span id="application-monitoring-actuator-euraka"></span>
+
+Spring Boot Actuator exposes configured application health and metrics. Eureka registers services and helps callers locate instances. See [Spring profiles and observability](/blog/Java%26Spring/2023-06-19-monitoring#monitoring-with-actuator-metrics-and-logs).
+
+## Microservices Debug (Logging & Distributed Tracing)
+
+Use a trace ID to follow a request across services and match relevant log events in a centralized store. See [distributed tracing](/blog/DistributedSystem/2024-10-05-Splunk-Logging#distributed-tracing).
+
+## Kafka
+
+Review producers, brokers, topics, partitions, and consumer groups in [Kafka: Partitions and Delivery Guarantees](/blog/DistributedSystem/2024-06-15-kafka-basic#topics-partitions-and-consumer-groups).
+
+## Fault-Tolerance
+
+Time out calls that exceed their budget, use circuit breakers to limit repeated calls to failing dependencies, and route traffic to healthy instances. See [cascading failures and fault tolerance](/blog/DistributedSystem/2024-08-05-Failures-in-distributed-systems#cascading-failures-and-fault-tolerance).

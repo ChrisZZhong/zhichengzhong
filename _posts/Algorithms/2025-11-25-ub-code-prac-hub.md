@@ -80,6 +80,8 @@ class Solution {
 
 ## LC 815 – 多源 BFS
 
+[题目和复习记录](/blog/Algorithms/2025-12-19-ub-code-final#leetcode-815-bus-routes-对公交和route都要去重)。
+
 这类题 Uber 非常喜欢 BFS/graph 方向。
 我们在进入 coding 之前就先提醒过学员：Uber 更关注你的 problem reasoning，而不是直接敲代码。
 
@@ -100,6 +102,8 @@ BFS 为什么适合
 
 
 ## LC 269 – Hard 拓扑
+
+[题目和复习记录](/blog/Algorithms/2025-12-19-ub-code-final#leetcode-269-alien-dictionary)。
 
 这题难度不低，非常考察：
 
@@ -180,27 +184,9 @@ Follow-up 是进阶版：
 
 ## Detect cycle in directed dependency graph
 
-You are given a directed dependency graph representing services in a system.
+Given directed service dependencies, determine whether a cycle exists. In the follow-up, determine whether the union of several dependency lists contains a cycle.
 
-*   There are `n` services, labeled from `0` to `n - 1` .
-*   You are given a list of directed edges `dependencies` , where each element is a pair `[a, b]` meaning **service `a` depends on service `b`** (i.e., there is a directed edge `a -> b` ).
-
-Assume:
-
-*   `1 <= n <= 10^5`
-*   `0 <= a, b < n`
-*   There may be zero or more edges.
-
-**Task:**
-
-1.  Implement a function that determines whether there is at least one cycle in this directed graph.
-    *   Return `true` if there is a cycle.
-    *   Return `false` otherwise.
-2.  Follow-up: Now you are given **multiple dependency arrays** instead of just one. Each array represents an additional list of edges on the same set of services. For example:
-    
-    *   `dependencies1` , `dependencies2` , ..., `dependenciesk`
-    
-    Each `dependenciesi` is a list of `[a, b]` pairs as defined above. Treat the union of all these edges as a single directed graph and determine whether this combined graph contains any cycle.
+**Hint:** Try DFS with three colors or topological sorting. For the incremental scenario, see the [UB Phone dependency-graph follow-ups](/blog/Algorithms/2025-11-13-Uber-Phone#graph-成环问题service-dependency) (password protected).
 
 ## Best Time to buy Stock
 
@@ -381,34 +367,11 @@ In other words, after reorienting some edges, all nodes should be able to "flow"
 
 Your algorithm should run in time close to linear in `n` (e.g., O(n)O(n)O(n) or O(nlog⁡n)O(n \\log n)O(nlogn)).
 
-## [](#problem-3-find-the-leftmost-column-with-a-1-in-a-sorted-binary-matrix)Problem 3: Find the leftmost column with a 1 in a sorted binary matrix
+## Problem 3: Find the leftmost column with a 1 in a sorted binary matrix
 
-You are given a binary matrix `A` of size `m × n` (mmm rows, nnn columns). Each cell is either 0 or 1. **Each row is sorted in non-decreasing order**, meaning:
+Each row is sorted with all zeros before the ones. Find the zero-based index of the leftmost column containing a one, or return `-1` if the matrix has none. Aim for a faster approach than scanning the whole matrix.
 
-*   All the 0s in a row come **before** any 1s in that row.
-*   A typical row therefore looks like: `0 0 0 1 1 1` (possibly all 0s or all 1s).
-
-**Task**:
-
-*   Find the **index of the leftmost column** (smallest column index) that contains at least one `1` **in any row** .
-*   If the matrix contains **no 1s at all** , return `-1` .
-
-You may assume 0-based column indexing (return an integer in `[0, n-1]`) or 1-based indexing (return in `[1, n]`); just be clear and consistent in your implementation.
-
-**Input format (conceptual)**:
-
-*   Integers `m` , `n` — number of rows and columns.
-*   An `m × n` matrix `A` of 0s and 1s, where each row is sorted: all 0s, then all 1s.
-
-**Output**:
-
-*   A single integer: the index of the **leftmost column** that contains at least one `1` , or `-1` if no such column exists.
-
-**Complexity requirement**:
-
-*   Design an algorithm that is **asymptotically faster than** the naive O(m×n)O(m \\times n)O(m×n) scan of the entire matrix in the worst case (for example, O(mlog⁡n)O(m \\log n)O(mlogn) or O(m+n)O(m + n)O(m+n) ).
-*   Be prepared to explain your algorithm and analyze its time complexity.
-
+**Hint:** Start at the top right. Move left after a one and down after a zero. See [UB Phone's problem examples and approaches](/blog/Algorithms/2025-11-13-Uber-Phone#leftmost-column-with-at-least-a-one-row-sorted-binary-matrix) (password protected).
 
 ## Design top-K frequency structure
 

@@ -53,6 +53,14 @@ Combining BM25 and embeddings gives traditional RAG more comprehensive, accurate
 
 This approach scales cost-effectively to knowledge bases far larger than a single prompt can hold. But traditional RAG has a major limitation: it often strips away context.
 
+### RAG Architecture
+
+![RAG architecture reference](/media/AIAgent/RAG_Architecture.jpg)
+
+### RAG Workflow
+
+![RAG workflow from ingestion through retrieval, generation, and evaluation](/media/AIAgent/RAG_workflow.jpg)
+
 ## The context problem in traditional RAG
 
 Traditional RAG divides documents into small chunks for efficient retrieval. This works for many applications, but problems arise when individual chunks do not carry enough context.

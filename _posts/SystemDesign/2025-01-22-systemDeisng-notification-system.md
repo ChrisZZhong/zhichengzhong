@@ -4,8 +4,10 @@ title: "System design - notification system"
 date: 2025-01-22
 description: "notification system"
 tag: System Design
-subcategory: Product Systems
+subcategory: Infrastructure
 ---
+
+For retry topics and dead-letter recovery, see [Kafka retries and errors](/blog/DistributedSystem/2024-06-15-kafka-basic#handling-retries-and-errors).
 
 ## Other References
 

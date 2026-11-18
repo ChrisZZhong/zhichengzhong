@@ -1,10 +1,11 @@
 ---
 password: interviews
 layout: post
-title: "SQL"
+title: "LeetCode SQL Problems"
 date: 2023-01-18
 description: "SQL leetcode questions"
-tag: Interviews
+tag: Algorithms
+subcategory: LeetCode Problems
 ---
 
 # SQL questions

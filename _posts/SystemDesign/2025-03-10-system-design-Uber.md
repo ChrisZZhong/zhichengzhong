@@ -249,3 +249,18 @@ It actually uses driver phones as a source of trip data to tackle the problem of
 When The driver’s phone app communicates with the dispatch system or the API call is happening between them, the dispatch system sends the encrypted state digest (to keep track of the latest information/data) to the driver’s phone app.
 
 Every time this state digest will be received by the driver’s phone app. In case of a data center failure, the backup data center (backup DISCO) doesn’t know anything about the trip so it will ask for the state digest from the driver’s phone app and it will update itself with the state digest information received by the driver’s phone app. Untitled Diagram
+
+## Ride-sharing interview follow-ups
+
+<span id="programhelp"></span>
+<span id="设计一个类似-uber-的-ride-sharing-platform支持全球范围的乘客和司机匹配"></span>
+
+- **Location and matching.** Use a spatial index such as Geohash or a quadtree to find nearby available drivers. Discuss the resolution of the index and lookups across cell boundaries.
+- **Service boundaries.** Separate location updates, matching, trips, and payments. Use a queue where a downstream action can complete asynchronously.
+- **Global coverage.** Partition the location and matching workload by city or region. Discuss recovery if a region fails and how dynamic pricing responds to local supply and demand.
+
+[Source interview notes](https://programhelp.net/?s=uber).
+
+<span id="设计一个类似-chatgpt-的系统"></span>
+
+The same interview notes also include [Designing LLM Inference and Token Streaming](/blog/SystemDesign/2025-12-19-llm-inference-and-token-streaming).

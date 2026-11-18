@@ -12,7 +12,7 @@ subcategory: Interview OA
 
 [✅] [19. Remove Nth Node From End of List](https://leetcode.cn/problems/remove-nth-node-from-end-of-list/)
 
-[✅] [20. valid-parentheses](https://leetcode.cn/problems/valid-parentheses/description/?envType=company&envId=bytedance&favoriteSlug=bytedance-thirty-days)
+[✅] [20. valid-parentheses](https://leetcode.cn/problems/valid-parentheses/description/?envType=company&envId=bytedance&favoriteSlug=bytedance-thirty-days) · [共用复习笔记](/blog/Algorithms/2023-08-06-Parentheses-problems#2-leetcode-20-valid-parentheses-多种括号)
 
 [⚠️] [22. Generate Parentheses](https://leetcode.cn/problems/generate-parentheses/) DFS
 
@@ -26,7 +26,7 @@ subcategory: Interview OA
 
 [✅] [827. Making A Large Island](https://leetcode.cn/problems/making-a-large-island/) Union Find
 
-[✅]  [207. Course Schedule](https://leetcode.cn/problems/course-schedule/) 拓扑排序
+[✅]  [207. Course Schedule](https://leetcode.cn/problems/course-schedule/) 拓扑排序 · [共用复习笔记](/blog/Algorithms/2025-12-19-ub-code-final#leetcode-207-course-schedule)
 
 [✅]  [151. Reverse Words in a String](https://leetcode.cn/problems/reverse-words-in-a-string/)
 
@@ -38,7 +38,7 @@ subcategory: Interview OA
 
 [✅]  [124. Binary Tree Maximum Path Sum](https://leetcode.cn/problems/binary-tree-maximum-path-sum/)
 
-[✅]  [253. Meeting Rooms II](https://leetcode.cn/problems/meeting-rooms-ii/) Sort + PQ
+[✅]  [253. Meeting Rooms II](https://leetcode.cn/problems/meeting-rooms-ii/) Sort + PQ · [共用复习笔记](/blog/Algorithms/2025-12-19-ub-code-final#leetcode-253-meeting-rooms-ii-时间排序heap)
 
 [✅]  [215. Kth Largest Element in an Array](https://leetcode.cn/problems/kth-largest-element-in-an-array/) PQ
 
@@ -64,7 +64,7 @@ subcategory: Interview OA
 
 [84. Largest Rectangle in Histogram](https://leetcode.cn/problems/largest-rectangle-in-histogram/)
 
-[5. Longest Palindromic Substring](https://leetcode.cn/problems/longest-palindromic-substring/)
+[5. Longest Palindromic Substring](https://leetcode.cn/problems/longest-palindromic-substring/) · [共用复习笔记](/blog/Algorithms/2025-12-19-ub-code-final#leetcode-5-longest-palindromic-substring)
 
 [261. Graph Valid Tree](https://leetcode.cn/problems/graph-valid-tree/) 没做过
 
