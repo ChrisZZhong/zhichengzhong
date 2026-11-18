@@ -54,16 +54,23 @@ flowchart TD
     db -.->|已提交的 outbox 记录| cdc["CDC"]
     cdc -->|发布事件| kafka["Kafka"]
     kafka -->|消费通知| consumer["Email Consumer"]
-    consumer -->|发送回执| mail["邮件服务"]
-    mail -.->|发送结果| consumer
-
-    consumer -->|暂时失败| retry["Retry topic"]
-    retry -.->|退避后再消费| consumer
-    consumer -->|重试耗尽| dlt["死信主题 DLT"]
+    consumer -->|首次发送| mail["SMTP 邮件服务"]
+    mail -.->|首次发送结果| consumer
+    consumer -->|暂时失败| retry["Kafka retry topic"]
+    retry -->|退避后消费| rc["Retry consumer（多实例）"]
+    rc --> cb{"Circuit breaker<br/>允许发送？"}
+    cb <-->|读写共享状态| redis[("Redis")]
+    cb -->|闭合：放行 / 半开：少量探测| mail
+    cb -.->|打开：暂停补发| hold["待重试通知积压在 Kafka"]
+    mail -.->|重试结果| rc
+    rc -->|仍可重试| retry
+    rc -->|单条重试耗尽| dlt["死信主题 DLT"]
     dlt -.->|受控重放| consumer
 ```
 
-DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。图中两条恢复路径都回到 Email Consumer：短暂故障按退避策略重试，死信经核实后才受控重放。两者都沿用原通知身份。
+DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。
+
+**SMTP 暂时不可用时。** 首次发送遇到暂态故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用 SMTP 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向故障中的 SMTP，形成 retry storm。半开时先用少量请求探测；若 SMTP 仍不可用就再次打开熔断器，确认恢复后再逐步消化积压。单条通知实际重试耗尽时才走图中的 DLT 分支。
 
 **先记住五件事：**
 
