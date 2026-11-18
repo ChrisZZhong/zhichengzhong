@@ -24,53 +24,65 @@ prime: false
 **迁移前：一次支付调用的往返**
 
 ```mermaid
-%%{init: {"sequence": {"width": 45, "actorMargin": 12, "mirrorActors": false}} }%%
+%%{init: {"sequence": {"width": 54, "actorMargin": 20, "mirrorActors": false}} }%%
 sequenceDiagram
     participant C as 客户端
     participant D as DP
     participant E as ECWS
     participant K as Core
-    C->>D: 请求
-    D->>E: 转发
-    E->>K: 支付调用
-    K-->>E: 支付结果
-    E-->>D: 响应
-    D-->>C: 返回
+    C->>D: 1. 支付请求
+    D->>E: 2. 转发请求
+    E->>K: 3. 调用支付
+    K-->>E: 4. 支付结果
+    E-->>D: 5. 应用响应
+    D-->>C: 6. 返回响应
 ```
+
+1. 客户端把支付请求发给 DataPower（DP）。
+2. DP 完成鉴权、限流和路由，把请求转给 ECWS。
+3. ECWS 调用 Core 执行支付。
+4. Core 把支付结果返回给 ECWS。
+5. ECWS 生成应用响应，返回给 DP。
+6. DP 将响应返回给发起请求的客户端。
 
 **迁移后：支付编排与异步邮件通知**
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 18, "rankSpacing": 32}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 24, "rankSpacing": 36}} }%%
 flowchart TD
-    client["客户端"] --> dp["DataPower（DP）"]
-    dp -->|SOAP| translator["SOAP 转 REST"]
-    translator --> service["fs-internal-service"]
-    dp -->|REST 原样转发| service
-    service -->|支付调用| core["Core / Mainframe"]
-    core -.->|支付结果| service
-    service -->|收到结果后写入| db[("Oracle 本地事务<br/>workflow record + 按需写入 outbox")]
-
-    db -.->|已提交的 outbox 记录| cdc["CDC"]
-    cdc -->|发布事件| kafka["Kafka"]
-    kafka -->|消费通知| consumer["Email Consumer"]
-    consumer -->|首次调用| mail["邮件 API<br/>Infra 维护"]
-    mail -.->|API 响应| consumer
-    consumer -->|暂时失败| retry["Kafka retry topic"]
-    retry -->|退避后消费| rc["Retry consumer（多实例）"]
-    rc --> cb{"Circuit breaker<br/>允许发送？"}
-    cb <-->|读写共享状态| redis[("Redis")]
-    cb -->|CLOSED：允许补发| mail
-    cb -.->|OPEN：暂停补发| hold["待重试通知积压在 Kafka"]
-    mail -.->|API 响应| rc
-    rc -->|仍可重试| retry
-    rc -->|单条重试耗尽| dlt["死信主题 DLT"]
-    dlt -.->|受控重放| consumer
+    client["客户端"] -->|1 接入| dp["DataPower（DP）"]
+    dp -->|2a SOAP| translator["SOAP 转 REST"]
+    translator -->|2a 转发| service["fs-internal-service"]
+    dp -->|2b REST 直达| service
+    service -->|3 调用支付| core["Core / Mainframe"]
+    core -.->|3 返回结果| service
+    service -->|4 本地提交| db[("Oracle<br/>workflow + outbox")]
+    db -.->|5 读取已提交事件| cdc["CDC"]
+    cdc -->|5 发布| kafka["Kafka"]
+    kafka -->|6 消费| consumer["Email Consumer"]
+    consumer -->|6 首次发送| mail["Infra 邮件 API"]
+    mail -.->|6 返回结果| consumer
+    consumer -->|7 暂态失败| retry["Kafka retry topic"]
+    retry -->|7 退避后消费| rc["Retry consumer"]
+    rc -->|8 检查| cb{"熔断器"}
+    cb <-->|8 共享状态| redis[("Redis")]
+    cb -->|8a CLOSED 补发| mail
+    mail -.->|8a 返回结果| rc
+    cb -.->|8b OPEN 等待| hold["待重试通知留在 Kafka"]
+    rc -->|9a 仍可重试| retry
+    rc -->|9b 次数耗尽| dlt["死信主题 DLT"]
+    dlt -.->|9b 受控重放| consumer
 ```
 
-DP 负责鉴权、限流和路由。编排服务拿到 Core 的结果后，用一个 Oracle 事务保存流程记录，并在符合通知条件时写入 outbox。支付请求只等自己的处理完成，发邮件从事务提交后开始。
-
-**邮件 API 暂时不可用时。** consumer 调用 Infra 的邮件 API 发送回执，SMTP 由 Infra 维护。首次调用遇到可重试的故障，通知进入 Kafka retry topic。多个 retry consumer 在再次调用邮件 API 前检查同一个 circuit breaker，通过 Redis 共享熔断状态。当持续失败触发熔断，各实例暂停补发，待重试通知留在 Kafka。这样即使许多任务同时到期，也不会一起冲向同一个邮件 API，形成 retry storm。熔断器只有 OPEN 和 CLOSED 两个状态。面试方案采用 60 秒冷却，OPEN 标记过期后恢复到 CLOSED，按总速率限制补发。阈值和失败场景见第 4 节 Q09。单条通知实际重试耗尽时才走图中的 DLT 分支。
+1. **接入。** 客户端将请求发给 DP，由 DP 鉴权、限流和路由。
+2. **协议分支。** 2a：SOAP 请求由翻译层转换为 REST，再交给 `fs-internal-service`。2b：REST 请求直接转发到同一个服务。
+3. **执行支付。** 编排服务调用 Core，并接收底层支付结果。
+4. **保存结果。** 编排服务在 Oracle 本地事务里写 workflow record，符合通知条件时同时写 outbox。支付请求无需等待邮件发送。
+5. **发布通知。** CDC 读取已提交的 outbox 事件并发布到 Kafka。
+6. **首次发送。** Email Consumer 消费通知并调用 Infra 邮件 API。API 接受请求后，SMTP 投递由 Infra 负责。
+7. **进入重试。** 遇到可安全重试的暂态失败，通知进入 retry topic，退避后由 retry consumer 处理。
+8. **检查共享熔断器。** 多个实例从 Redis 读取状态。8a：CLOSED 时调用邮件 API 并处理响应。8b：OPEN 时暂停补发，通知留在 Kafka。面试方案采用 60 秒冷却，恢复时限制总补发速率，详见 Q09。
+9. **处理补发失败。** 9a：还有尝试次数，回到第 7 步。9b：实际重试耗尽，进入 DLT；核实原因后可沿用原通知身份受控重放，从第 6 步恢复处理。
 
 **先记住五件事：**
 

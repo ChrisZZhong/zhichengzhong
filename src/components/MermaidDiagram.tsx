@@ -26,6 +26,9 @@ export default function MermaidDiagram({ chart }: Props) {
             theme: 'dark',
             securityLevel: 'loose',
             darkMode: true,
+            // Use SVG text metrics for flowcharts and let wide diagrams scroll at their natural size.
+            flowchart: { htmlLabels: false, useMaxWidth: false },
+            sequence: { useMaxWidth: false },
             themeVariables: {
               primaryColor: '#1e1e3a',
               primaryTextColor: '#e2e8f0',
@@ -46,6 +49,8 @@ export default function MermaidDiagram({ chart }: Props) {
           mermaidInitialized = true;
         }
 
+        await document.fonts.ready;
+        if (cancelled) return;
         const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
         const { svg: renderedSvg } = await mermaid.render(id, chart);
         if (!cancelled) setSvg(renderedSvg);

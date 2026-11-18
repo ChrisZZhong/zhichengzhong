@@ -53,6 +53,14 @@ export default function BlogPostContent({ content }: Props) {
       const id = slugify(extractText(children));
       return <h4 id={id}>{children}</h4>;
     },
+    pre({ node, children, ...props }) {
+      const code = node?.children[0];
+      if (code?.type === 'element' && code.tagName === 'code' &&
+          Array.isArray(code.properties.className) && code.properties.className.includes('language-mermaid')) {
+        return <>{children}</>;
+      }
+      return <pre {...props}>{children}</pre>;
+    },
     code(props) {
       const { children, className } = props;
       const match = /language-(\w+)/.exec(className || '');
