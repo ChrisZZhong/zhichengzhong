@@ -58,9 +58,14 @@ sequenceDiagram
 %%{init: {"flowchart": {"nodeSpacing": 24, "rankSpacing": 36}} }%%
 flowchart TD
     client["Client"] -->|1 Request| dp["DataPower"]
-    dp -->|2a SOAP| translator["SOAP to REST"]
-    translator -->|2a REST| service["fs-internal-service"]
-    dp -->|2b REST| service
+    subgraph translator["SOAP to REST Translation Service"]
+        protocol{"Incoming protocol"}
+        protocol -->|2a SOAP| convert["Convert to REST"]
+        protocol -->|2b REST| forward["Pass through unchanged"]
+    end
+    dp -->|2 Forward request| protocol
+    convert --> service["fs-internal-service"]
+    forward --> service
     service -->|3 Call| core["Core / Mainframe"]
     core -.->|3 Result| service
     service -->|4 Commit| db[("Oracle<br/>Workflow and outbox")]
@@ -82,7 +87,7 @@ flowchart TD
 ```
 
 1. **Receive the payment.** DataPower still handles authentication, rate limiting, and routing.
-2. **Accept both protocols.** SOAP requests pass through the translator (2a). Native REST requests go straight to `fs-internal-service` (2b). Both arrive at the same orchestration service as REST.
+2. **Route both protocols through the translation service.** DataPower forwards every SOAP and REST request to the SOAP to REST Translation Service. It converts SOAP requests to REST (2a) and passes native REST requests through unchanged (2b). Both paths reach `fs-internal-service` as REST.
 3. **Call Core.** The orchestration service calls Core and waits for the payment result.
 4. **Record the outcome.** After Core responds, the service writes the workflow record to Oracle. When a receipt is due, it writes an outbox event in the same transaction. The client can receive its payment response without waiting for email delivery.
 5. **Publish the receipt event.** Change data capture (CDC) picks up the committed outbox record and publishes it to Kafka.

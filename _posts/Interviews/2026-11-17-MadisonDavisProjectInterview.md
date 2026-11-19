@@ -51,9 +51,14 @@ sequenceDiagram
 %%{init: {"flowchart": {"nodeSpacing": 24, "rankSpacing": 36}} }%%
 flowchart TD
     client["客户端"] -->|1 接入| dp["DataPower（DP）"]
-    dp -->|2a SOAP| translator["SOAP 转 REST"]
-    translator -->|2a 转发| service["fs-internal-service"]
-    dp -->|2b REST 直达| service
+    subgraph translator["SOAP to REST Translation Service"]
+        protocol{"请求协议"}
+        protocol -->|2a SOAP| convert["转换为 REST"]
+        protocol -->|2b REST| forward["原样透传"]
+    end
+    dp -->|2 转发请求| protocol
+    convert --> service["fs-internal-service"]
+    forward --> service
     service -->|3 调用支付| core["Core / Mainframe"]
     core -.->|3 返回结果| service
     service -->|4 本地提交| db[("Oracle<br/>workflow + outbox")]
@@ -75,7 +80,7 @@ flowchart TD
 ```
 
 1. **接入。** 客户端将请求发给 DP，由 DP 鉴权、限流和路由。
-2. **协议分支。** 2a：SOAP 请求由翻译层转换为 REST，再交给 `fs-internal-service`。2b：REST 请求直接转发到同一个服务。
+2. **两种协议共用翻译服务。** DataPower 将 SOAP 和 REST 请求都转给 SOAP to REST Translation Service。服务把 SOAP 转成 REST（2a），对原生 REST 原样透传（2b）。两条分支随后都以 REST 调用 `fs-internal-service`。
 3. **执行支付。** 编排服务调用 Core，并接收底层支付结果。
 4. **保存结果。** 编排服务在 Oracle 本地事务里写 workflow record，符合通知条件时同时写 outbox。支付请求无需等待邮件发送。
 5. **发布通知。** CDC 读取已提交的 outbox 事件并发布到 Kafka。
@@ -445,7 +450,7 @@ Mock 适合验证业务分支；真实事务、唯一约束、重投和框架交
 
 **设计推演：** 优先兼容性增量，先部署能读新旧格式的一侧，验证缺字段/未知字段/错误枚举；重放旧事件也要能处理。实际 schema 和发布先后顺序尚未补全，不把这些原则改写成当年的上线记录。
 
-**SOAP → REST 的真实背景：** SOAP 请求由独立 Translator 转成 REST，原生 REST 请求保持原样，两者都交给 `fs-internal-service` 编排。旧版本保留并给客户迁移窗口；DP 负责鉴权、限流与 routing。具体分批客户、回滚机制和是否全部迁完未确认。
+**SOAP → REST 的真实背景：** 两种请求都先经过独立 Translator。它将 SOAP 转成 REST，将原生 REST 原样透传，再交给 `fs-internal-service` 编排。旧版本保留并给客户迁移窗口；DP 负责鉴权、限流与 routing。具体分批客户、回滚机制和是否全部迁完未确认。
 
 ### Q17. Payment succeeded, but the customer did not get the email. How do you investigate?
 
