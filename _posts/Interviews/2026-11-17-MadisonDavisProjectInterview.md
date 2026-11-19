@@ -45,7 +45,7 @@ sequenceDiagram
 5. ECWS 生成应用响应，返回给 DP。
 6. DP 将响应返回给发起请求的客户端。
 
-**迁移后：支付编排与异步邮件通知**
+**迁移后 · 支付与回执发送成功**
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 24, "rankSpacing": 36}} }%%
@@ -66,17 +66,10 @@ flowchart TD
     cdc -->|5 发布| kafka["Kafka"]
     kafka -->|6 消费| consumer["Email Consumer"]
     consumer -->|6 首次发送| mail["Infra 邮件 API"]
-    mail -.->|6 返回结果| consumer
-    consumer -->|7 暂态失败| retry["Kafka retry topic"]
-    retry -->|7 退避后消费| rc["Retry consumer"]
-    rc -->|8 检查| cb{"熔断器"}
-    cb <-->|8 共享状态| redis[("Redis")]
-    cb -->|8a CLOSED 补发| mail
-    mail -.->|8a 返回结果| rc
-    cb -.->|8b OPEN 等待| hold["待重试通知留在 Kafka"]
-    rc -->|9a 仍可重试| retry
-    rc -->|9b 次数耗尽| dlt["死信主题 DLT"]
-    dlt -.->|9b 受控重放| consumer
+    mail -.->|6 已接受| consumer
+    consumer -->|7 写入发送成功状态| db
+    db -.->|7 写入已提交| consumer
+    consumer -->|8 提交 offset| kafka
 ```
 
 1. **接入。** 客户端将请求发给 DP，由 DP 鉴权、限流和路由。
@@ -85,9 +78,33 @@ flowchart TD
 4. **保存结果。** 编排服务在 Oracle 本地事务里写 workflow record，符合通知条件时同时写 outbox。支付请求无需等待邮件发送。
 5. **发布通知。** CDC 读取已提交的 outbox 事件并发布到 Kafka。
 6. **首次发送。** Email Consumer 消费通知并调用 Infra 邮件 API。API 接受请求后，SMTP 投递由 Infra 负责。
-7. **进入重试。** 遇到可安全重试的暂态失败，通知进入 retry topic，退避后由 retry consumer 处理。
-8. **检查共享熔断器。** 多个实例从 Redis 读取状态。8a：CLOSED 时调用邮件 API 并处理响应。8b：OPEN 时暂停补发，通知留在 Kafka。面试方案采用 60 秒冷却，恢复时限制总补发速率，详见 Q09。
-9. **处理补发失败。** 9a：还有尝试次数，回到第 7 步。9b：实际重试耗尽，进入 DLT；核实原因后可沿用原通知身份受控重放，从第 6 步恢复处理。
+7. **记录发送成功。** Infra 邮件 API 确认接受发送请求后，Email Consumer 向 Oracle 写入这条通知的发送成功状态，等数据库提交成功。
+8. **提交消费位点。** 随后由 Email Consumer 向 Kafka 提交这条记录对应的消费位点（offset）。
+
+**迁移后 · 邮件回执重试**
+
+```mermaid
+flowchart TD
+    first["1. Email Consumer<br/>遇到可重试的发送失败"] --> retry["Kafka retry topic"]
+    retry -->|2 退避后消费| rc["Retry consumer"]
+    rc --> breaker{"3. 熔断器"}
+    redis[("Redis")] -.->|共享状态| breaker
+    breaker -->|OPEN| wait["通知留在 Kafka"]
+    wait -.->|冷却后再检查| rc
+    breaker -->|CLOSED| api["4. 调用 Infra 邮件 API"]
+    api -->|已接受| success["5a. 成功状态写入 Oracle<br/>再提交重试记录的 offset"]
+    api -->|可重试失败| budget{"5b. 还有重试次数？"}
+    budget -->|有| retry
+    budget -->|无| dlt["死信主题 DLT"]
+    dlt -.->|6 受控重放| replay["Email Consumer<br/>沿用原通知 ID"]
+```
+
+1. 首次发送遇到可重试失败时，Email Consumer 将通知写入 retry topic。
+2. 退避时间到后，Retry consumer 消费这条通知。
+3. 重试实例检查 Redis 中共享的熔断状态。OPEN 时通知留在 Kafka，冷却后再检查。跳过发送不消耗重试次数。冷却和限速方案见 Q09。
+4. CLOSED 时，Retry consumer 调用 Infra 邮件 API 补发。
+5. API 接受请求后，Retry consumer 将成功状态写入 Oracle，再提交重试记录的 offset（5a）。如果再次遇到可重试失败，有剩余次数就安排下一次退避，次数耗尽则转入 DLT（5b）。
+6. 核实并处理故障原因后，可沿用原通知 ID 受控重放邮件回执。原支付已经完成。
 
 **先记住五件事：**
 
