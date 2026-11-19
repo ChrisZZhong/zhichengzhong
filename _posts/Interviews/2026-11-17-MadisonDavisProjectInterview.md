@@ -96,7 +96,6 @@ flowchart TD
     api -->|可重试失败| budget{"5b. 还有重试次数？"}
     budget -->|有| retry
     budget -->|无| dlt["死信主题 DLT"]
-    dlt -.->|6 受控重放| replay["Email Consumer<br/>沿用原通知 ID"]
 ```
 
 1. 首次发送遇到可重试失败时，Email Consumer 将通知写入 retry topic。
@@ -104,7 +103,8 @@ flowchart TD
 3. 重试实例检查 Redis 中共享的熔断状态。OPEN 时通知留在 Kafka，冷却后再检查。跳过发送不消耗重试次数。冷却和限速方案见 Q09。
 4. CLOSED 时，Retry consumer 调用 Infra 邮件 API 补发。
 5. API 接受请求后，Retry consumer 将成功状态写入 Oracle，再提交重试记录的 offset（5a）。如果再次遇到可重试失败，有剩余次数就安排下一次退避，次数耗尽则转入 DLT（5b）。
-6. 核实并处理故障原因后，可沿用原通知 ID 受控重放邮件回执。原支付已经完成。
+
+通知 consumer 的自动重试到 DLT 为止。后续由独立服务核对，原支付已经完成。
 
 **先记住五件事：**
 
@@ -147,7 +147,7 @@ flowchart TD
 | 编排模块重构 | “I refactored the orchestration module into `fs-internal-service`.” | 为什么划这个服务边界；请求如何经过下游；本地状态如何保存 |
 | 邮件解耦 | “I separated receipt email delivery from the payment workflow.” | 为什么异步；怎样避免本地状态与事件的双写缺口 |
 | 通知应用侧集成 | “I worked on the outbox/CDC integration and the email consumer.” | 输入输出契约、事件身份、发送和失败处理 |
-| retry / DLT / replay | “I implemented the application-side recovery path for notification failures.” | 暂态与永久错误、退避/jitter、重放如何保持业务身份 |
+| retry / DLT | “I implemented the application-side recovery path for notification failures.” | 暂态与永久错误、退避/jitter、耗尽后转入 DLT |
 | 跨团队联调 | “I provided the application requirements and worked with the owning teams to connect the flow.” | DP 的流量提票；CDC/Kafka 的 source、destination、schema |
 | 发布与排障协作 | “I worked with infrastructure, QA, and application teams on releases and troubleshooting.” | 自己实际做过的一次验证、日志排查或交接动作 |
 
@@ -199,7 +199,7 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 >
 > I used a transactional outbox for that boundary. After receiving the Core response, we wrote the workflow record and the outbox event in one short Oracle transaction. CDC then published the committed event to Kafka, so payment processing didn't have to wait for the email service.
 >
-> On the notification side, I worked on the consumer and recovery path: retries with backoff and jitter, dead-letter handling, and controlled replay. I coordinated the event contract with the Kafka and CDC teams and worked with QA and infrastructure on integration and releases.
+> On the notification side, I worked on the consumer and recovery path: retries with backoff and jitter, followed by dead-letter handling when retries were exhausted. I coordinated the event contract with the Kafka and CDC teams and worked with QA and infrastructure on integration and releases.
 >
 > The result was separate execution and recovery paths for payments and notifications. We could investigate and retry a notification without making the payment request wait. Centralized logging and a global trace ID also helped us follow requests through the flow.
 >
@@ -213,7 +213,7 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 
 **T：** 我接到的任务是重构 orchestration 模块。在这个范围内，我把邮件拆成异步链路，让付款不用等邮件，同时要保留通知失败后的恢复能力。
 
-**A：** 技术上先处理本地双写问题：拿到 Core response 后，用一个 Oracle 短事务保存 workflow record 和 outbox，再由 CDC 发布到 Kafka。然后在通知 consumer 侧处理 retry、backoff/jitter、DLT 和受控 replay。协作上，我负责应用侧契约和集成，与平台、QA、基础设施团队完成联调、发布和排障。
+**A：** 技术上先处理本地双写问题：拿到 Core response 后，用一个 Oracle 短事务保存 workflow record 和 outbox，再由 CDC 发布到 Kafka。然后在通知 consumer 侧处理 retry、backoff/jitter、重试耗尽后转入 DLT。协作上，我负责应用侧契约和集成，与平台、QA、基础设施团队完成联调、发布和排障。
 
 **R：** 付款和邮件有了独立的执行与恢复路径。邮件失败可以单独排查和重试；迁移中的集中日志与 global trace ID 也帮助串联请求。先把这个功能结果讲清，再根据已核实材料补数字。
 
@@ -336,7 +336,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
   → 在完成或可靠交接之后，才允许推进已提交的恢复位点
 ```
 
-**项目已确认：** 有 Email Consumer、重试与 DLT/replay、Oracle 回写去重的示意。以上是帮助解释正确性的逻辑骨架；真实状态表、ack mode、未知结果处置实现不能从图中自动补出。
+**项目已确认：** 有 Email Consumer、重试与 DLT、Oracle 回写去重的示意。以上是帮助解释正确性的逻辑骨架；真实状态表、ack mode、未知结果处置实现不能从图中自动补出。
 
 具体读代码时看四个地方：输入契约、业务方法的完成含义、异常如何传播、框架何时确认。`Listener` 和 `EventConsumer` 的名字不同，不改变这些检查点。
 
@@ -365,7 +365,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 | 认证、证书或全局配置故障 | 需要修复依赖/配置；避免每条消息持续制造流量 |
 | 请求可能已被接受，但响应丢失 | 结果未知，不能仅凭 timeout 就认定可安全重发 |
 
-**项目可讲：** 退避和 jitter 把单条通知的重试时间错开。邮件 API 持续出现可重试故障时，retry consumer 通过 Redis 共享熔断状态，暂停补发。单条重试耗尽再进入 DLT，按需受控重放。
+**项目可讲：** 退避和 jitter 把单条通知的重试时间错开。邮件 API 持续出现可重试故障时，retry consumer 通过 Redis 共享熔断状态，暂停补发。单条重试耗尽后进入 DLT，自动补发在这里结束，后续核对由另一个服务负责。
 
 **单条回执的重试节奏。** 这份面试稿采用 5 次指数退避重试，每次调用前分别等待 **1、2、4、8、16 分钟**，并用 jitter 打散同一批通知。若熔断器保持 CLOSED，忽略 jitter、排队和调用耗时，5 次补发会落在首次失败后的第 1、3、7、15、31 分钟。若熔断器为 OPEN，待重试通知继续留在 Kafka，实际补发可能更晚。生产环境的精确配置仍待核实。
 
@@ -398,11 +398,9 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 ### Q10. What happens after a message reaches the DLT? Is replay safe?
 
-DLT 是失败处理入口，不是“放进去就解决了”。要有人或服务判断原因、修复条件和是否允许重放；replay 仍经过正常业务校验，并保留同一通知身份。
+在我的链路里，邮件补发次数耗尽后，Retry consumer 把通知写入 DLT，这条通知的自动重试就结束了。后续由独立服务做 reconciliation。它如何取得待核对记录、是否支持人工或批量补发，要看该服务的实现。
 
-需要解释：谁能触发、范围怎样限定、如何限流、怎样知道已恢复。材料支持 controlled replay，但不支持声称已经有某个 REST endpoint、工单服务或审批实现。
-
-**追问：** 修完 template 后重放，是否应该生成新的业务 key？普通重试/重放不应因技术修复变成新的通知意图；有意再次通知属于另一项业务决定。
+**如果被问到 replay 有什么用。** Replay 是把选定的通知事件交回邮件处理流程。例如邮件 API 明确拒绝了请求，故障已修复，回执仍需发送，就可以沿用原通知 ID 重新处理。如果 API 已接受邮件、只是本地成功记录缺失，核实后应修正记录；结果仍未知时，先排查，避免给客户发两封。处理范围只涉及邮件回执，支付已经完成。
 
 ### Q11. Do you need ordering? Why not just use the same Kafka key?
 

@@ -102,7 +102,6 @@ flowchart TD
     api -->|Retryable failure| budget{"5b. Attempts left?"}
     budget -->|Yes| retry
     budget -->|No| dlt["Dead-letter topic"]
-    dlt -.->|6 Controlled replay| replay["Email consumer<br/>Same notification ID"]
 ```
 
 1. On a retryable send failure, the email consumer publishes the notification to the retry topic.
@@ -110,4 +109,5 @@ flowchart TD
 3. Retry consumers check the shared breaker state in Redis. While OPEN, the notification stays pending. After cooldown, the consumer checks again.
 4. When CLOSED, the retry consumer calls the Infra email API.
 5. On acceptance, the retry consumer records success in Oracle, then commits the retry record’s offset (5a). On another retryable failure, it schedules the next attempt or sends the exhausted notification to the dead-letter topic (5b).
-6. After the cause is resolved, the email consumer can replay the receipt with the same notification ID. The original payment has already completed.
+
+The notification consumer stops at the dead-letter topic. A separate service handles reconciliation later. The payment has already completed.
