@@ -8,6 +8,26 @@ tag: temp
 
 I worked on the ECWS payment orchestration service used by banks and credit unions. I refactored the orchestration module into a Java and Spring Boot service and moved receipt email delivery out of the payment request path.
 
+## How ECWS routes a request
+
+ECWS reads `requestType` to choose a workflow. These are five examples. During the migration, we kept the existing logic for the other request types because we hadn't observed a bottleneck in those flows.
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 16, "rankSpacing": 32}} }%%
+flowchart TD
+    service["1. ECWS orchestration"] --> route{"2. requestType"}
+    route --> auth["AUTH<br/>Return user info"]
+    route --> pay["PAY<br/>Process payment"]
+    route --> rest["REST<br/>Restriction"]
+    route --> clnc["CLNC<br/>Update credit line"]
+    route --> acmt["ACMT<br/>Maintain account"]
+    pay --> core["3. Call Core for payment"]
+```
+
+1. The orchestration service receives the business request.
+2. The type selects one branch. Several branches can also populate a memo. For example, `CLNC` uses credit-limit details, while `PAY` uses the payment amount. The `REST` label here is a business code for restriction-related data.
+3. For `PAY`, ECWS calls Core to execute the payment. The diagrams below follow that branch before and after migration.
+
 ## Before migration
 
 ```mermaid
