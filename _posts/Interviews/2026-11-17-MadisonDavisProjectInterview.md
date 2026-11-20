@@ -328,24 +328,19 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 
 ### Q07. Walk me through the consumer logic.
 
-这是优先练的一题。先讲流程，再讲采用什么框架：
+> When a receipt event comes in, we validate it and try to insert its notification ID into Oracle. That ID is unique. If the insert succeeds, we call the Infra email API with the same ID. Once the API accepts the request, we mark the receipt as successful in Oracle. Only after that update commits do we commit the Kafka offset.
+>
+> On redelivery, we read the existing row. If it already shows success, we skip the send and commit the offset. If the row is still open, we check how far the previous attempt got. For example, the email might have gone out just before the consumer crashed.
+>
+> Retryable failures go to a retry topic with backoff. Before calling Infra, the retry consumer checks the circuit breaker shared in Redis. While it’s open, the receipt stays pending. Once it’s closed, we check Infra’s send record using the original notification ID. If Infra already sent the receipt, we just update Oracle and commit the offset. We resend only if Infra confirms it hasn’t been sent. If retries run out, the receipt goes to the dead-letter topic. A separate service handles reconciliation later.
 
-```text
-读取事件 → 校验事件类型、必要字段、业务资格
-  → 识别稳定业务 key，检查已有结果与并发规则
-      ├─ 已确认完成的重复 → 不调用邮件依赖，完成本次处理
-      ├─ 正在处理 / 结果未知 → 按协议等待或核实，不能当作已完成
-      └─ 允许本次执行 → 调用邮件依赖 → 分类结果
-                            ├─ 已完成 → 完成处理
-                            ├─ 明确可重试失败 → 可靠转交 retry
-                            ├─ 永久失败 → 可靠转交 DLT/处置流程
-                            └─ 外部结果未知 → 核实或可靠转交专门处置
-  → 在完成或可靠交接之后，才允许推进已提交的恢复位点
-```
+**按一条回执走一遍**
 
-**项目已确认：** 有 Email Consumer、重试与 DLT、Oracle 回写去重的示意。以上是帮助解释正确性的逻辑骨架；真实状态表、ack mode、未知结果处置实现不能从图中自动补出。
-
-具体读代码时看四个地方：输入契约、业务方法的完成含义、异常如何传播、框架何时确认。`Listener` 和 `EventConsumer` 的名字不同，不改变这些检查点。
+1. **首次消费。** 校验事件类型、必填字段和发送资格，用稳定的通知 ID 在 Oracle 插入唯一记录。插入成功才走首次发送。遇到重复键就读原记录：Oracle 已记成功，直接提交当前 offset；记录尚未完成，先核对上次进度。原调用仍在进行时，保留待处理状态。
+2. **发送与写回。** 邮件 API 接受请求后，将 Oracle 中的原记录更新为成功。数据库提交成功，再提交当前 Kafka offset。如果 API 已接受但 Oracle 写回失败，下次处理要核对 Infra 已有的发送结果。
+3. **失败交接。** 明确可重试的暂态失败转入 retry topic，退避并加 jitter。通知可靠写入 retry topic 后，才可提交原记录的 offset。明确的永久失败转入 DLT；发送超时则保留结果未知，等待核实。
+4. **补发前检查共享熔断器。** 退避到期后，Retry Consumer 检查 Redis 中的 OPEN/CLOSED 状态。OPEN 时通知留在 Kafka，等冷却后再检查，这次等待不扣重试次数。CLOSED 时才向 Infra 核对原通知 ID，限速处理积压。
+5. **从尚未完成的一步继续。** Infra 已发送，就跳过邮件调用，补写 Oracle 成功状态，再提交重试记录的 offset。Infra 确认未发送，才补发并走相同的写回顺序。查不到明确结果时继续待核实；实际补发再次遇到暂态失败，按剩余次数安排退避，耗尽后进 DLT。后续 reconciliation 由独立服务负责。
 
 ### Q08. When should the offset advance? What if the process crashes?
 
