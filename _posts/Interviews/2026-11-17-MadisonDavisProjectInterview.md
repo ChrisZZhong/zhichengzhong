@@ -171,7 +171,7 @@ flowchart TD
 
 ### 2.3 哪些细节先放在待确认区
 
-目前还不能直接写进过去式经历的内容：通知表的唯一约束、atomic claim/租约、完整发送状态机、实际 ack mode、Infra 并发发送去重机制、邮件 UNKNOWN 对账、某一组精确 retry 参数。
+目前还不能直接写进过去式经历的内容：通知表的具体 DDL、并发接管或租约机制、完整发送状态机、实际 ack mode、Infra 并发发送去重机制、邮件 UNKNOWN 对账、某一组精确 retry 参数。
 
 被问到这些机制时可以先解释设计原则，再说明项目实际实现需要确认哪一处；别把参考设计里的代码当成自己的生产代码。
 
@@ -284,16 +284,20 @@ STAR 用来组织具体经历：背景与任务简短，重点放在自己的行
 
 **追问：** 同一个 key 携带不同金额怎么办？这是契约问题，通常应识别冲突，而不是把不同请求当作同一次操作。这里是实现讨论，尚不能声称项目已有某个 payload hash 字段。
 
-### Q05. How did you handle idempotency? Payment and notification are the same thing?
+### Q05. How do you handle idempotency?
 
-分成两层：
+> For receipt emails, we use the same notification ID on every attempt. The consumer first inserts that ID into Oracle, where it has to be unique. If the insert succeeds, we call the email API with that ID. Once the API confirms success, we mark the Oracle record as successful. After that update commits, we commit the Kafka offset.
+>
+> On redelivery, we pick up at the first unfinished step. If Oracle already shows success, we skip the email call and commit the offset. If the row exists but the outcome is still open, the retry consumer checks Infra’s send record. If Infra already sent the email, we just update Oracle and commit the offset. We only resend when Infra confirms it hasn’t been sent. If the outcome is still unclear, we leave it pending.
 
-- **支付幂等：** 同一支付意图重试保留 transactionID；防止重复执行资金动作。
-- **通知幂等：** 材料中的业务标识是 `transactionId + notificationType`；用于识别同一通知、支持去重；实际唯一范围、字段和并发协议仍需核实，不能仅凭这个 key 保证邮件不会重复发送。
+**用一封回执记住顺序。** 同一支付可有不同类型的通知，回执用稳定的通知幂等键（`transactionId + notificationType`）。首次消费先在 Oracle 插入唯一键，插入成功后调用邮件 API。重投遇到重复键时读取原记录，再根据上一步已经落下的结果继续。
 
-Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有新的执行 trace，但不能随意变更其业务身份。
-
-**实现追问：** 如果处理结果完全落在同一个数据库里，可以把“去重记录 + 业务写入”放在一个事务中，用唯一约束/原子操作防并发竞争。发邮件属于外部副作用，不能直接照搬这个保证。[Idempotent Consumer](https://microservices.io/patterns/communication-style/idempotent-consumer.html)
+| 重投时查到什么 | 从哪一步继续 |
+| --- | --- |
+| Oracle 已记成功，Kafka offset 尚未提交 | 跳过发送，提交 offset。 |
+| Oracle 有记录但未记成功，Infra 已确认发送 | 跳过发送，补写 Oracle 成功状态。等这次写入提交，再提交 offset。 |
+| Oracle 未记成功，Infra 确认未发送 | 进入补发流程。邮件 API 确认成功后，更新 Oracle，再提交 offset。 |
+| Infra 结果未知，或原请求仍在处理 | 保留待核实状态。仅凭 Oracle 中存在记录，无法判定邮件发送结果。 |
 
 #### How would you configure Kafka for idempotent writes to the retry topic?
 
@@ -308,7 +312,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 **英文口述**
 
-> For writes to the retry topic, I’d enable producer idempotence, use all acknowledgments, allow retries, and keep at most five requests in flight per connection. That covers a lost acknowledgment: the producer can retry the same batch safely. The topic’s replication factor of three and minimum ISR of two address durability. If the consumer calls our email API twice, that’s a separate problem. I’d check whether the API can deduplicate requests using the same notification ID.
+> For writes to the retry topic, I’d enable producer idempotence, use all acknowledgments, allow retries, and keep at most five requests in flight per connection. That covers a lost acknowledgment: the producer can retry the same batch safely. The topic’s replication factor of three and minimum ISR of two address durability. If the consumer calls our email API twice, that’s a separate problem. On a receipt retry, we check Infra’s send record using the original notification ID.
 
 **追问：producer 的 retries 就是那 5 次邮件重试吗？** Producer 重试的是一次 Kafka 写入，重试时间还受 `delivery.timeout.ms` 约束。1、2、4、8、16 分钟是应用重新调用邮件 API 的等待间隔。这两层分别计数。
 
