@@ -83,7 +83,7 @@ flowchart TD
 3. **Call Core.** The orchestration service calls Core and waits for the payment result.
 4. **Record the outcome.** After Core responds, the service writes the workflow record to Oracle. When a receipt is due, it writes an outbox event in the same transaction. The client can receive its payment response without waiting for email delivery.
 5. **Publish the receipt event.** Change data capture (CDC) picks up the committed outbox record and publishes it to Kafka.
-6. **Request email delivery.** The email consumer calls the infrastructure team's email API. Infrastructure handles SMTP delivery after the API accepts the request.
+6. **Request email delivery.** The email consumer sends the notification ID with the receipt request. Infra records the send status under that ID. Infrastructure handles SMTP delivery after the API accepts the request.
 7. **Record send success.** Once the email API accepts the send, the consumer writes the notification’s success status to Oracle and waits for that write to commit.
 8. **Commit the offset.** The consumer then commits its offset to Kafka for the processed record.
 
@@ -97,7 +97,10 @@ flowchart TD
     redis[("Redis")] -.->|Shared state| breaker
     breaker -->|OPEN| wait["Keep pending in Kafka"]
     wait -.->|After cooldown| rc
-    breaker -->|CLOSED| api["4. Call Infra email API"]
+    breaker -->|CLOSED| lookup{"4. Infra send status<br/>by notification ID"}
+    lookup -->|Already sent| success
+    lookup -->|Confirmed unsent| api["Send receipt"]
+    lookup -->|Unknown| pending["Await verification"]
     api -->|Accepted| success["5a. Record success in Oracle<br/>then commit retry offset"]
     api -->|Retryable failure| budget{"5b. Attempts left?"}
     budget -->|Yes| retry
@@ -107,7 +110,7 @@ flowchart TD
 1. On a retryable send failure, the email consumer publishes the notification to the retry topic.
 2. The retry consumer picks it up after backoff.
 3. Retry consumers check the shared breaker state in Redis. While OPEN, the notification stays pending. After cooldown, the consumer checks again.
-4. When CLOSED, the retry consumer calls the Infra email API.
-5. On acceptance, the retry consumer records success in Oracle, then commits the retry record’s offset (5a). On another retryable failure, it schedules the next attempt or sends the exhausted notification to the dead-letter topic (5b).
+4. When CLOSED, the retry consumer checks Infra’s record using the original notification ID. If Infra already sent the receipt, the consumer skips the send and goes to 5a. It calls the send API only when Infra confirms the receipt is unsent. An inconclusive lookup leaves the outcome pending.
+5. After a confirmed prior send or a newly accepted send, the retry consumer records success in Oracle, then commits the retry record’s offset (5a). On another retryable failure, it schedules the next attempt or sends the exhausted notification to the dead-letter topic (5b).
 
 The notification consumer stops at the dead-letter topic. A separate service handles reconciliation later. The payment has already completed.

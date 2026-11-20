@@ -77,7 +77,7 @@ flowchart TD
 3. **执行支付。** 编排服务调用 Core，并接收底层支付结果。
 4. **保存结果。** 编排服务在 Oracle 本地事务里写 workflow record，符合通知条件时同时写 outbox。支付请求无需等待邮件发送。
 5. **发布通知。** CDC 读取已提交的 outbox 事件并发布到 Kafka。
-6. **首次发送。** Email Consumer 消费通知并调用 Infra 邮件 API。API 接受请求后，SMTP 投递由 Infra 负责。
+6. **首次发送。** Email Consumer 调用 Infra 邮件 API 时携带通知 ID，Infra 按此 ID 记录发送状态。API 接受请求后，SMTP 投递由 Infra 负责。
 7. **记录发送成功。** Infra 邮件 API 确认接受发送请求后，Email Consumer 向 Oracle 写入这条通知的发送成功状态，等数据库提交成功。
 8. **提交消费位点。** 随后由 Email Consumer 向 Kafka 提交这条记录对应的消费位点（offset）。
 
@@ -91,7 +91,10 @@ flowchart TD
     redis[("Redis")] -.->|共享状态| breaker
     breaker -->|OPEN| wait["通知留在 Kafka"]
     wait -.->|冷却后再检查| rc
-    breaker -->|CLOSED| api["4. 调用 Infra 邮件 API"]
+    breaker -->|CLOSED| lookup{"4. 按通知 ID<br/>核对 Infra 发送记录"}
+    lookup -->|已发送| success
+    lookup -->|确认未发送| api["补发回执"]
+    lookup -->|结果未知| pending["待核实"]
     api -->|已接受| success["5a. 成功状态写入 Oracle<br/>再提交重试记录的 offset"]
     api -->|可重试失败| budget{"5b. 还有重试次数？"}
     budget -->|有| retry
@@ -101,8 +104,8 @@ flowchart TD
 1. 首次发送遇到可重试失败时，Email Consumer 将通知写入 retry topic。
 2. 退避时间到后，Retry consumer 消费这条通知。
 3. 重试实例检查 Redis 中共享的熔断状态。OPEN 时通知留在 Kafka，冷却后再检查。跳过发送不消耗重试次数。冷却和限速方案见 Q09。
-4. CLOSED 时，Retry consumer 调用 Infra 邮件 API 补发。
-5. API 接受请求后，Retry consumer 将成功状态写入 Oracle，再提交重试记录的 offset（5a）。如果再次遇到可重试失败，有剩余次数就安排下一次退避，次数耗尽则转入 DLT（5b）。
+4. CLOSED 时，Retry consumer 用原通知 ID 核对 Infra 发送记录。已发送就直接走 5a；确认未发送才调用邮件 API 补发；查询结果不明确时保留待核实状态。
+5. 查到此前已发送，或本次补发已被 API 接受后，Retry consumer 将成功状态写入 Oracle，再提交重试记录的 offset（5a）。如果再次遇到可重试失败，有剩余次数就安排下一次退避，次数耗尽则转入 DLT（5b）。
 
 通知 consumer 的自动重试到 DLT 为止。后续由独立服务核对，原支付已经完成。
 
@@ -168,7 +171,7 @@ flowchart TD
 
 ### 2.3 哪些细节先放在待确认区
 
-目前还不能直接写进过去式经历的内容：通知表的唯一约束、atomic claim/租约、完整发送状态机、实际 ack mode、供应商查询能力、邮件 UNKNOWN 对账、某一组精确 retry 参数。
+目前还不能直接写进过去式经历的内容：通知表的唯一约束、atomic claim/租约、完整发送状态机、实际 ack mode、Infra 并发发送去重机制、邮件 UNKNOWN 对账、某一组精确 retry 参数。
 
 被问到这些机制时可以先解释设计原则，再说明项目实际实现需要确认哪一处；别把参考设计里的代码当成自己的生产代码。
 
@@ -309,7 +312,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 **追问：producer 的 retries 就是那 5 次邮件重试吗？** Producer 重试的是一次 Kafka 写入，重试时间还受 `delivery.timeout.ms` 约束。1、2、4、8、16 分钟是应用重新调用邮件 API 的等待间隔。这两层分别计数。
 
-**追问：retry topic 已写成功，但提交原 offset 前进程崩了呢？** 重启后可能再次消费原记录，应用会发起一次新的 `send()`。即使沿用相同的 Kafka key，也可能再写入一条记录。若要求 Kafka 内的转发和位点一起提交，可以讨论 Kafka 事务。外部邮件 API 仍要依据同一通知身份以及它实际支持的幂等或查询能力来处理重复。
+**追问：retry topic 已写成功，但提交原 offset 前进程崩了呢？** 重启后可能再次消费原记录，应用会发起一次新的 `send()`。即使沿用相同的 Kafka key，也可能再写入一条记录。若要求 Kafka 内的转发和位点一起提交，可以讨论 Kafka 事务。补发前会按原通知 ID 查 Infra 的发送记录，已发送就补记本地成功。
 
 ### Q06. Why is checking “already sent” before sending not enough?
 
@@ -317,7 +320,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 
 **设计推演：** 原子条件更新、唯一约束或 claim 可以限制本地并发，但“某人拿到了处理权”不等于“邮件已经发成功”。项目真实 claim/lease 表尚未确认，不把这套设计说成亲手实现。
 
-**更深一层：** 如果邮件 API 已接受请求，consumer 却在记录结果前崩溃，本地锁仍无法消除外部结果不明的窗口。需要根据邮件 API 的契约核实幂等、结果查询或业务处置能力；不支持这些能力时，要明确重复和漏发之间的取舍。SMTP 最终接受也不等于收件人已看到邮件。[SMTP 接受与超时](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.2.6)
+**更深一层：** 如果邮件 API 已接受请求，consumer 却在记录结果前崩溃，本地锁仍无法消除外部结果不明的窗口。Retry consumer 用原通知 ID 查 Infra；查到已发送就补记 Oracle 成功，写入提交后再提交 offset。这个查询能恢复丢失的成功记录；并发请求能否在 Infra 侧原子去重仍待确认。SMTP 最终接受也不等于收件人已看到邮件。[SMTP 接受与超时](https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.2.6)
 
 ### Q07. Walk me through the consumer logic.
 
@@ -392,7 +395,7 @@ Kafka offset、trace ID、业务幂等 key 各有用途。一次重试可能有�
 | What if two workers trip it at the same time? | 所有实例更新同一桶；脚本原子执行，OPEN 标记只在不存在时创建。已经发出去的请求仍可能返回，熔断针对接下来要发的调用。 |
 | What if the API is still down after 60 seconds? | TTL 到期只代表允许再试。恢复时限制所有实例合计的补发速率，否则大家会一起冲向下游。持续故障会重新触发熔断；代价是每轮冷却结束后会放过一批失败请求。 |
 | What if Redis is unavailable? | 在这套设计里，我会暂时停掉补发并告警，把待处理通知留在 Kafka。回执允许延迟，支付已完成。读取 Redis 失败与成功读到“标记不存在”必须分开处理。 |
-| What if the API accepted the email but the response was lost? | timeout 可以计入依赖故障率，但这封邮件的发送结果未知。若 Infra API 支持幂等键，重试沿用同一 notification ID；若能查询就先核实结果，否则按 UNKNOWN 流程处置。 |
+| What if the API accepted the email but the response was lost? | timeout 可以计入依赖故障率，但这封邮件的发送结果未知。重试用原通知 ID 核对 Infra 记录。已发送则跳过补发，先补记 Oracle 成功再提交 offset；查询超时则保留待核实状态。 |
 | What if the consumer crashes while the breaker is open? | 消息留在 Kafka。原记录只有在处理完成或可靠交给 retry topic / DLT 后才推进提交位点。重启后可能再次读到同一通知，仍沿用同一业务身份。 |
 | How would you verify that recovery is working? | 同时看邮件 API 的暂态失败率、实际补发速率、熔断状态和最老待发通知的年龄。错误率下降但没有出站调用，只能说明还在暂停；恢复后要看到成功发送，积压也逐步下降。 |
 
