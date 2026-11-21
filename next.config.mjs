@@ -83,6 +83,21 @@ const nextConfig = {
   transpilePackages: ['mermaid'],
   async redirects() {
     return [
+      {
+        source: '/blog/SystemDesign/microservice-patterns',
+        destination: '/system-design-patterns',
+        permanent: true,
+      },
+      {
+        source: '/blog/SystemDesign/microservice-patterns/:pattern/diagram',
+        destination: '/system-design-patterns/:pattern/diagram',
+        permanent: true,
+      },
+      ...['/blog/SystemDesign/microservice-patterns', '/system-design-patterns'].map(prefix => ({
+        source: `${prefix}/:pattern`,
+        destination: '/blog/SystemDesign/2026-11-20-pattern-:pattern',
+        permanent: true,
+      })),
       ...postRedirects('Java%26Spring', mergedJavaSpringPosts, ['Java&Spring', 'Java%26Spring']),
       ...postRedirects('DistributedSystem', mergedDistributedSystemPosts),
       ...Object.entries(reclassifiedPosts).map(([source, destination]) => ({

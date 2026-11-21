@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import type { Post, PostMeta } from '@/types/post';
 
 const postsDirectory = path.join(process.cwd(), '_posts');
+const patternSource = /^https:\/\/microservices\.io\/patterns\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.html(?:#[a-z0-9-]+)?$/;
 
 function normalizeSubcategory(value: unknown): string | undefined {
   return typeof value === 'string' ? value.trim() || undefined : undefined;
@@ -99,6 +100,10 @@ export function getPostBySlug(slug: string): Post | null {
       subcategory: normalizeSubcategory(data.subcategory),
       protected: tag === 'Interviews' || data.password === 'interviews',
       content,
+      toc: data.toc === false ? false : undefined,
+      originalSource: typeof data.originalSource === 'string' && patternSource.test(data.originalSource)
+        ? data.originalSource
+        : undefined,
     };
   } catch {
     return null;

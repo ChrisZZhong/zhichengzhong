@@ -8,7 +8,8 @@ import { getPostBySlug, getAllPostsMeta } from '@/lib/posts';
 import BlogPostContent from '@/components/BlogPostContent';
 import TableOfContents from '@/components/TableOfContents';
 import type { TocHeading } from '@/components/TableOfContents';
-import { ArrowLeft, Calendar, Tag } from 'lucide-react';
+import { patternCatalogHref, patternPostSlugPrefix } from '@/lib/microservice-patterns';
+import { ArrowLeft, ArrowUpRight, Calendar, Tag } from 'lucide-react';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -71,7 +72,13 @@ export default function BlogPostPage({ params }: Props) {
   if (!post) notFound();
 
   const locked = post.protected && !validAccessProof(cookies().get(accessCookie)?.value);
-  const headings = locked ? [] : extractHeadings(post.content);
+  const headings = locked || post.toc === false ? [] : extractHeadings(post.content);
+  const original = !locked && post.originalSource && slug.startsWith(patternPostSlugPrefix)
+    ? {
+        url: post.originalSource,
+        mapHref: `${patternCatalogHref}#map-node-${slug.slice(patternPostSlugPrefix.length)}`,
+      }
+    : undefined;
 
   // Prev / next within the same tag
   const allPosts = getAllPostsMeta()
@@ -129,6 +136,17 @@ export default function BlogPostPage({ params }: Props) {
 
             {post.description && post.description !== post.title && (
               <p className="text-lg text-text-muted">{post.description}</p>
+            )}
+
+            {original && (
+              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <Link href={original.mapHref} className="text-accent-cyan hover:underline">
+                  Back to the pattern map
+                </Link>
+                <a href={original.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-cyan hover:underline">
+                  Source by Chris Richardson on Microservices.io <ArrowUpRight size={14} aria-hidden="true" />
+                </a>
+              </div>
             )}
 
             <div className="mt-6 h-px bg-gradient-to-r from-accent-cyan/30 via-accent-purple/20 to-transparent" />

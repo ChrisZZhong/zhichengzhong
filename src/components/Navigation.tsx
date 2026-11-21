@@ -10,6 +10,7 @@ import { useTheme } from '@/context/ThemeContext';
 const navLinksEn = [
   { href: '/', label: 'Home' },
   { href: '/blog', label: 'Blog' },
+  { href: '/system-design-patterns', label: 'System Design Patterns' },
   { href: '/experience', label: 'Experience' },
   { href: '/resume', label: 'Resume' },
   { href: '/connect', label: 'Connect' },
@@ -18,6 +19,7 @@ const navLinksEn = [
 const navLinksZh = [
   { href: '/', label: '首页' },
   { href: '/blog', label: '博客' },
+  { href: '/system-design-patterns', label: '系统设计模式' },
   { href: '/experience', label: '经历' },
   { href: '/resume', label: '简历' },
   { href: '/connect', label: '联系' },
@@ -29,7 +31,10 @@ export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { lang, toggle } = useLanguage();
   const { theme, toggle: toggleTheme } = useTheme();
-  const navLinks = lang === 'en' ? navLinksEn : navLinksZh;
+  const navLinks = (lang === 'en' ? navLinksEn : navLinksZh).map(link => ({
+    ...link,
+    active: pathname === link.href || pathname.startsWith(`${link.href}/`),
+  }));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -57,12 +62,13 @@ export default function Navigation() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-8">
-          {navLinks.map(({ href, label }) => (
+        <div className="hidden lg:flex items-center gap-4 xl:gap-7">
+          {navLinks.map(({ href, label, active }) => (
             <Link
               key={href}
               href={href}
-              className={`nav-link ${pathname === href || (href !== '/' && pathname.startsWith(href)) ? 'active' : ''}`}
+              aria-current={active ? 'page' : undefined}
+              className={`nav-link whitespace-nowrap ${active ? 'active' : ''}`}
             >
               {label}
             </Link>
@@ -70,7 +76,7 @@ export default function Navigation() {
         </div>
 
         {/* CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-2 xl:gap-3 whitespace-nowrap">
           <button
             onClick={toggleTheme}
             className="w-8 h-8 flex items-center justify-center rounded-full border border-card-border text-text-muted hover:border-accent-cyan/40 hover:text-accent-cyan transition-all duration-200"
@@ -105,9 +111,10 @@ export default function Navigation() {
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden text-text-muted hover:text-text-primary transition-colors"
+          className="lg:hidden text-text-muted hover:text-text-primary transition-colors"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
+          aria-expanded={mobileOpen}
         >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -115,14 +122,15 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden nav-scrolled backdrop-blur-md border-b border-card-border px-6 py-4 flex flex-col gap-4">
-          {navLinks.map(({ href, label }) => (
+        <div className="lg:hidden nav-scrolled backdrop-blur-md border-b border-card-border px-6 py-4 flex flex-col gap-4">
+          {navLinks.map(({ href, label, active }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setMobileOpen(false)}
+              aria-current={active ? 'page' : undefined}
               className={`text-sm font-medium transition-colors ${
-                pathname === href || (href !== '/' && pathname.startsWith(href))
+                active
                   ? 'text-accent-cyan'
                   : 'text-text-muted hover:text-text-primary'
               }`}
