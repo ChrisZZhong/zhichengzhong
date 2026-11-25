@@ -6,7 +6,8 @@
 
 /* ─── Theme variables ────────────────────────────────────────────────────── */
 :root {
-  /* Dark (default) — RGB triplet so Tailwind opacity modifiers work */
+  color-scheme: dark;
+  /* Dark palette — RGB triplet so Tailwind opacity modifiers work */
   --color-space-rgb: 4, 4, 17;
   --color-card-bg: rgba(15, 15, 35, 0.6);
   --color-card-border: rgba(99, 102, 241, 0.15);
@@ -50,6 +51,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --color-space-rgb: 248, 250, 252;
   --color-card-bg: rgba(255, 255, 255, 0.85);
   --color-card-border: rgba(99, 102, 241, 0.18);
