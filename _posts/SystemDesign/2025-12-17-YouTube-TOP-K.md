@@ -10,9 +10,6 @@ subcategory: Infrastructure
 
 For the underlying mechanisms, see [Kafka partitions and consumer groups](/blog/DistributedSystem/2024-06-15-kafka-basic#topics-partitions-and-consumer-groups) and [Flink event time and windows](/blog/DistributedSystem/2025-03-04-Flink#event-time-watermarks-and-windows).
 
-Design YouTube Top K
-====================
-
 Understanding the Problem
 -------------------------
 

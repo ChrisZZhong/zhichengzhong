@@ -8,11 +8,6 @@ prime: false
 subcategory: Product Systems
 ---
 
-###### Common Problems
-
-Design Ticketmaster
-===================
-
 Understanding the Problem
 -------------------------
 

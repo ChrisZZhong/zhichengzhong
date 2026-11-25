@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "System Design - Add click Aggregator"
+title: "System Design - Ad Click Aggregator"
 date: 2025-12-17
 description: ""
 tag: System Design
@@ -9,11 +9,6 @@ subcategory: Infrastructure
 ---
 
 For the underlying stream-processing behavior, see [Flink event time, watermarks, and windows](/blog/DistributedSystem/2025-03-04-Flink#event-time-watermarks-and-windows).
-
-###### Common Problems
-
-Design Ad Click Aggregator
-==========================
 
 Understanding the Problem
 -------------------------
@@ -73,6 +68,12 @@ With that in mind, let's document the non-functional requirements:
 Here's how it might look on your whiteboard:
 
 Requirements
+
+### Design Recap
+
+1. **Aggregate on each dashboard query.** Store raw click events in the database. Each dashboard request filters by ad and time range, then groups the matching clicks by minute. This is simple to build, but repeated queries scan the same events and compete with click writes.
+2. **Pre-aggregate in batches.** Run a scheduled job that groups new clicks by ad and minute and writes the counts to a separate analytics database. The dashboard reads precomputed rows quickly, but new clicks are only visible after the next batch finishes.
+3. **Aggregate continuously with Flink.** Send click events through Kafka. Flink updates per-ad, one-minute counts as events arrive and periodically writes them to the analytics database. The dashboard keeps the same fast read path and sees fresher counts. The latest minute can still be in progress.
 
 The Set Up
 ----------

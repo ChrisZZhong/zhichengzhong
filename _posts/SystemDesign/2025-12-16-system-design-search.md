@@ -8,11 +8,6 @@ prime: false
 subcategory: Product Systems
 ---
 
-###### Common Problems
-
-Design FB Post Search
-=====================
-
 Understanding the Problem
 -------------------------
 
