@@ -55,6 +55,41 @@ graph TD
 \`\`\`
 ```
 
+### Excalidraw diagrams
+
+Save a drawing under `public/media/` and reference it using the usual Markdown image syntax. The blog renders a local `.excalidraw` file as a read-only diagram.
+
+```markdown
+![Search indexing and query flow](/media/system-design/post-search.excalidraw)
+```
+
+For a static image, export SVG from Excalidraw and use the same syntax with `.svg`. Keep the editable source outside `public/` if you only want to publish the exported image.
+
+### System Design solution cards
+
+Place alternatives under their shared question heading. Use one `<details>` per solution with a one-line `<summary>`. Use `data-rating="great"` for pale green, `data-rating="good"` for pale yellow, and `data-rating="bad"` for pale red. Cards start collapsed and open independently.
+
+```markdown
+### How should the search service handle repeat queries?
+
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Cache results by query</summary>
+<div class="solution-card-body">
+
+##### Approach
+
+Key the cache by the normalized query and its filters.
+
+##### Challenges
+
+Set a TTL that balances freshness against hit rate.
+
+</div>
+</details>
+```
+
+Leave a blank line before the first Markdown block and after the last one inside the body. The body supports normal Markdown, including diagrams, lists, and code blocks. Include `Challenges` when you have trade-offs to document. Close the card before moving on to shared takeaways or the next section.
+
 ## Tech Stack
 
 - **Next.js 14** (App Router, TypeScript)

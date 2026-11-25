@@ -221,11 +221,11 @@ Caching and precomputation are some of the most common strategies for scaling re
 
 [Learn This Pattern](/learn/system-design/patterns/scaling-reads)
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Cache the Top K for each time window</summary>
+<div class="solution-card-body">
 
-Good Solution: Cache the Top K for each time window
-
-###### Approach
+##### Approach
 
 One of the more elegant approaches for us is to simply put a cache by our top-K service. We can use any distributed cache like Redis or Memcached. If the request is in the cache, we can return it immediately. If the request is not in the cache, we can compute it, store it in the cache (with a TTL of a couple hours), and return it.
 
@@ -235,15 +235,18 @@ Cache Top-K
 
 For cache hits (the overwhelming majority of requests), we can return our results well inside of the 10's of milliseconds requirement we set. Most caches will return results in the sub-millisecond range.
 
-###### Challenges
+##### Challenges
 
 The biggest problem with this approach is when the cache expires we (a) suddenly have a flood of requests to the database, and (b) they're all going to break our SLA since our top K request takes longer than 10's of milliseconds. While we can partially solve (a) by coalescing requests (i.e. only allowing one request per server a given time window to the database, have all the other requests wait for that response), we can't solve (b) without a more sophisticated approach.
 
-### 
+</div>
+</details>
 
-Great Solution: Precompute the Top K for each time window
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Precompute the Top K for each time window</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 Another approach we can utilize is to add a cron to our system which, on fixed intervals, will precompute the top K for each time window and warms our cache in the same way. Then, requests that come to our top-K service are only reading from the cache, never querying the database.
 
@@ -251,11 +254,14 @@ Cron Top-K
 
 This solves the problem of (b) in our "good" solution where we break our SLA around window boundaries when our cache expires. Because our cron job is running at fixed intervals, it has time to "get ahead" of the expirations that would have happened.
 
-###### Challenges
+##### Challenges
 
 The biggest problem with this approach is that it adds some operational complexity. What happens if the cron job fails? How do we monitor to ensure we're not very far behind? In the grander scheme of things, these are not the most important aspects of this particular design (we have a lot more to cover) so most interviewers aren't going to ask for additional details here.
 
 We can retain the cache entries for a couple hours to solve for the case where our precomputation job is late. Then the top-k service can serve stale data for a short period of time rather than nothing.
+
+</div>
+</details>
 
 ### 2) How can we handle the massive number of writes to the database?
 
@@ -351,11 +357,11 @@ Note here there is a discrepancy between how you would likely build this feature
 
 We have some options here.
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Aggregate at a Coarser Granularity</summary>
+<div class="solution-card-body">
 
-Good Solution: Aggregate at a Coarser Granularity
-
-###### Approach
+##### Approach
 
 One approach that will save us a lot of processsing time is aggregating as a coarser granularity. In addition to keeping track of the views for each video for each hour, we can keep track of the views for each day. Then, when we need to query for larger windows (like a month), we can sum up the daily aggregates rather than the hour-by-hour aggregates.
 
@@ -365,17 +371,20 @@ More Flink Granularities
 
 When it comes time to query, our Top-K service can simply query the higher granularity tables when the window size is larger.
 
-###### Challenges
+##### Challenges
 
 Having a cron read and write to our database implies additional load that we're already struggling to sustain. The queries to sum up hour to days, or days to months are still expensive and slow (but maybe not as slow as aggregating 24 hours \* 30 days = 720 records for each video!). In the worst case, our top-K queries for the last delay are delayed by however long it takes to (1) write the hour-grain aggregates, (2) kick off a cron, (3) aggregate those hours together with the other hours in that {day, month}, (4) write those to the database, and (5) read them back again.
 
 You might make the case to your interviewer that this latency is acceptable given (a) the higher granularity top-K queries change a lot less frequently, and (b) the expectations of freshness from users are lower. But we can do better.
 
-### 
+</div>
+</details>
 
-Great Solution: Maintain Aggregates for Each Window in the Database
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Maintain Aggregates for Each Window in the Database</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 Instead of maintaining aggregates for arbitrary partitions of time, we can maintain aggregates for each window. As we discussed earlier, if we have a VideoViewsLastHour table with an index on the views column, our queries are very fast! In this case, all we need to do is have our top K cron read the top K videos directly from our index.
 
@@ -390,17 +399,20 @@ To tie this all together, for the video views in the last month:
 2.  Whenever a new hour has passed and we're ready to write to our database, we'll make updates to our window tables (e.g. VideoViewsLastHour) rather than writing to the hour-grain VideoViews table.
     
 
-###### Challenges
+##### Challenges
 
 This approach moves some complexity from the top-K reads to the writes. We now have to write to 4 tables instead of just 1.
 
 There are many ways to optimize these bulk operations in Postgres. We can use unlogged tables to avoid writing to the WAL. We can also delay fsync to the end of the transaction to further improve performance. Choosing the right batch size will be important here as well. There are a lot of of "empirical" optimizations we can do here but that likely won't fall inside the scope of a system design interview in part because they depend on the actual data and hardware we're working with. Benchmarks are key!
 
-### 
+</div>
+</details>
 
-Great Solution: (With Caveats) Do Aggregation in Memory with Flink
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: (With Caveats) Do Aggregation in Memory with Flink</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 For completeness, a final approach would be to keep the aggregates in Flink, using Flink's native distributed state management instead of reading and writing to the Views DB. We can use an external state storage, like RocksDB to move state off the heap onto disk so that it scales to the large size of data we're dealing with.
 
@@ -476,11 +488,14 @@ Full Flink Solution
 
 In an interview setting, you're probably talking about each of these steps verbally. It would be cumbersome for you to write out the code for this and unusual, unless you were specifically interviewing for a data engineering heavy role.
 
-###### Challenges
+##### Challenges
 
 I think this approach is pretty elegant, but it relies heavily on knowledge of Flink which is not something every interviewer (or every candidate!) will be familiar with. In certain cases, you might get pushback from your interviewer to "do it without Flink!" or "explain how each of the pieces work at a lower level." Some of these challenges are surmountable, but in practice this quickly turns into a coding interview or a low-level design challenge vs a high-level system design interview.
 
 All said, here for completeness but generally would not recommend for a system design interview!
+
+</div>
+</details>
 
 ### 4) What if we need to support sliding windows?
 
@@ -548,27 +563,30 @@ Notice there is not a list operation here, we've lost track of the ID of the ite
 
 In order to solve our tumbling window top-K problem, we just need to keep sketches and sorted lists for each window that we want to query. There's two practical ways for us to do this in our design:
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Redis</summary>
+<div class="solution-card-body">
 
-Good Solution: Redis
-
-###### Approach
+##### Approach
 
 Redis natively supports CMS and sorted sets. We can revert back to our View Event Consumer and have each view event trigger a CMS.INCRBY and then a CMS.QUERY. With the result, we can then ZADD the items to our sorted set. We'll keep our sorted set trimmed to 1000 entries, and, as an optimization, avoiding ZADD any item which is already below the top 1000 by keeping a lower bound in our view consumer.
 
 Redis CMS Top-K
 
-###### Challenges
+##### Challenges
 
 Durability becomes a concern when we introduce Redis. Because each view event is mutating our sketch, we risk situations where we can lose data if, for instance, a view event is added to our sketch but not updated in our sorted set. Rebuilding from Kafka is an option but it will be slow and while Redis' AOF gives us a way to recover from data loss, we don't have a good way to map it to Kafka offsets.
 
 You might hand wave these a bit. We're approximating after all, who cares about losing a few views! But keep in mind that the _simplicity_ of this solution is begging the interviewer to probe these type of details and force you to flesh out your design.
 
-### 
+</div>
+</details>
 
-Great Solution: Flink
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Flink</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 If we're using a Flink-based approach, the CMS and the sorted list can both be maintained in Flink's state management in memory (checkpointed by Flink to avoid losing state). This is just custom code we're writing into our job rather than additional infra we're deploying, so our diagram largely looks the same!
 
@@ -578,7 +596,7 @@ If a node goes down, Flink allows us to restore from a checkpoint and replay our
 
 This approach is more resilient to failures than the Redis approach and more efficient because the data structure is kept in memory.
 
-###### Challenges
+##### Challenges
 
 Like earlier Flink-based solutions, this approach will require both that (a) your interviewer understands enough about Flink to understand the proposal, and (b) you're able to go into detail about how each of the pieces works at a lower level. Expect to spend some time talking about the job structure, how state is managed, etc.
 
@@ -587,6 +605,9 @@ These approaches both work really well for tumbling windows where we are only ad
 Fortunately, there's a solution here. If we can guarantee that we're only decrementing items that we have previously incremented, CMS also allows us to _remove_ items from the sketch with similar guarantees ([Reference](https://courses.grainger.illinois.edu/CS498ABG/fa2022/slides/09.pdf)). This gives us one new API: remove which can't be done with the Redis approach (Redis doesn't support CMS.DECRBY), but can be done with a Flink-based approach or a custom in memory implementation.
 
 This would be well outside the scope of expectations for an interview.
+
+</div>
+</details>
 
 ### 6) Is there room for a specialized database here?
 
@@ -602,15 +623,15 @@ Once you understand how things can be accomplished with primitives, it becomes m
 
 Show More
 
-### 
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: InfluxDB or Prometheus (time-series engine with downsampling)</summary>
+<div class="solution-card-body">
 
-Bad Solution: InfluxDB or Prometheus (time-series engine with downsampling)
-
-###### Approach
+##### Approach
 
 Ingest view counts via Kafka and write per-minute points keyed by time with videoId as a series identifier or label into InfluxDB, and use tasks/continuous queries for downsampling (e.g., minute -> hour -> day). We can then query this with top() on aggregated counts to get K.
 
-###### Challenges
+##### Challenges
 
 This doesn't work! Because we have billions of distinct videoIds as tags/series, our top() queries are effectively performing scans. InfluxDB and Prometheus generally can't support this level of cardinality.
 
@@ -618,11 +639,14 @@ Conceptually think of it this way: InfluxDB gives us a really great way to query
 
 Most high-scale time series databases are geared more toward writes and narrow queries than analytic workloads. So while InfluxDB and Prometheus are both great for surfacing the full time series data for an individual videoId (think: a graph), they're not a good fit for our problem which is trying to query across _all the graphs_.
 
-### 
+</div>
+</details>
 
-Good Solution: TimescaleDB (Postgres + hypertables + continuous aggregates)
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: TimescaleDB (Postgres + hypertables + continuous aggregates)</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 While TimescaleDB is a time series database, it leans more toward analytics workloads and complex queries by design. TimescaleDB extends Postgres (what's not to love!) that basically allows us to have tables (called "hypertables") with some built-in time-based partitioning and time series features.
 
@@ -634,15 +658,18 @@ We can use continuous aggregates to maintain rollups for the last hour/day/month
 
 Net/net: it looks _a lot_ like our existing solution but using TimescaleDB's features and with a more efficient storage structure.
 
-###### Challenges
+##### Challenges
 
 To meet our SLAs, we're still going to need caching. The pre-aggregation isn't free, it still requires compute, and as such we'll be sharding out the database like we were previously.
 
-### 
+</div>
+</details>
 
-Good Solution: Real-time OLAP (Druid/Pinot/ClickHouse)
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Real-time OLAP (Druid/Pinot/ClickHouse)</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 The last approach is to use a real-time OLAP database. Ingest from Kafka, roll up per-minute by videoId, and query with topN/groupBy over a time filter. These all have a different way to do the same thing: pre-aggregate the data on ingest.
 
@@ -655,9 +682,12 @@ Each of these systems has a different approach to these pre-aggregations:
 *   ClickHouse: Use Materialized VIEW → SummingMergeTree/AggregatingMergeTree tables to maintain per-minute/hour/day rollups on ingest. This just basically puts pressure on writes. Queries for fixed windows read the rolled-up table and do ORDER BY views DESC LIMIT K.
     
 
-###### Challenges
+##### Challenges
 
 Some of these systems can get flaky at scale in production (frankly, this is true of all systems at this scale!). Node outages and compaction can cause issues with us meeting query SLAs. If you end up using any of these systems in your design, you'll want to be prepared with a deeper understanding of how each step works. Your interviewer might say "Ok, I haven't used Druid before but I think I understand the concept. Walk me through the ingestion process." Be ready to get detailed and teach!
+
+</div>
+</details>
 
 Note how closely the "good" TimescaleDB solution resembles our existing solution! This isn't a coincidence. When you're thinking deeply about how to structure your data, you'll find that the right system design is often the one that allows you to most easily express the ideal data flow.
 

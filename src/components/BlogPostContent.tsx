@@ -9,6 +9,10 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import type { Components } from 'react-markdown';
 
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), { ssr: false });
+const ExcalidrawDiagram = dynamic(() => import('./ExcalidrawDiagram'), {
+  ssr: false,
+  loading: () => <span role="status" className="block text-sm text-text-muted">Loading diagram…</span>,
+});
 
 interface Props {
   content: string;
@@ -120,10 +124,13 @@ export default function BlogPostContent({ content }: Props) {
     },
     // Images
     img({ src, alt }) {
+      const isExcalidraw = src?.split(/[?#]/, 1)[0].toLowerCase().endsWith('.excalidraw');
       return (
         <span className="block my-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt || ''} className="rounded-xl border border-card-border max-w-full mx-auto" />
+          {isExcalidraw && src ? <ExcalidrawDiagram key={src} src={src} alt={alt ?? ''} /> : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt={alt || ''} className="rounded-xl border border-card-border max-w-full mx-auto" />
+          )}
           {alt && <span className="block text-center text-xs text-text-muted mt-2 italic">{alt}</span>}
         </span>
       );

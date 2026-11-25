@@ -169,9 +169,9 @@ Allow Search
 
 The Index is doing a lot of the work for search here. Let's talk about that a bit more. In order to allow users to search posts by keyword, we need to be able to find all of the posts which _contain_ that keyword. With trillions of posts and petabytes of data, this is not a small feat! What are our options?
 
-### 
-
-Bad Solution: Scale an Un-Indexed Database
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Scale an Un-Indexed Database</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -185,9 +185,12 @@ Unfortunately, it's terribly slow because our database needs to look at every po
 
 Some candidates might see the problem here and think that they can solve this via sharding or replication. This marginally improves performance: if we needed to look at N posts and we have M nodes, we now only have to look at N/M posts for each node. But it's still dramatically too slow. This is a dead-end.
 
-### 
+</div>
+</details>
 
-Great Solution: Create an Inverted Index
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Create an Inverted Index</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -209,17 +212,20 @@ We also need to write to many keys for every post since a given post might have 
 
 Inverted Index
 
+</div>
+</details>
+
 ### 3) Users should be able to get search results sorted by recency or like count.
 
 Next we'll move to our last requirement which is to be able to sort the results by either recency or like count - that is, if we search for "Taylor" and sort by recency, we want to be able to show the most recent posts that were created. If we sort by likes, we want to see the top liked posts.
 
 Again, we have options here!
 
-### 
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Request-Time Sorting</summary>
+<div class="solution-card-body">
 
-Bad Solution: Request-Time Sorting
-
-###### Approach
+##### Approach
 
 The most naive solution we can employ is to grab all of the post IDs for a given keyword, look up the timestamp or like count, then sort those in memory.
 
@@ -233,9 +239,12 @@ This is ... not great.
 
 The biggest problem with this approach is that the number of Post IDs might be very large for common keywords. If a keyword like "Taylor" has 10s of millions of results, we could easily have payloads returned from our index which are 100s of megabytes. In addition, for each of these results we need to make a lookup - 10s of millions of them. Finally, sorting millions of items at request time adds unnecessary latency to our system.
 
-### 
+</div>
+</details>
 
-Great Solution: Multiple Indexes
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Multiple Indexes</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -254,6 +263,9 @@ Multiple Indexes
 We've doubled the amount of storage required for our indexes here. This is a valid tradeoff for the massive improvement in query performance, but it does cost more.
 
 We also introduced a new problem: likes are happening quite frequently. Each like event requires us to update many scores so that the like indexes are up-to-date. This puts a lot of stress on our system, which we'll both note for our interviewer and plan to address later.
+
+</div>
+</details>
 
 [Potential Deep Dives](https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery#deep-dives-10-minutes)
 --------------------------------------------------------------------------------------------------------------------
@@ -279,9 +291,9 @@ Caching is a powerful tool to use for systems where we need to scale reads. Read
 
 [Learn This Pattern](/learn/system-design/patterns/scaling-reads)
 
-### 
-
-Good Solution: Use a distributed cache alongside our search service
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Use a distributed cache alongside our search service</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -291,11 +303,14 @@ We'll want to put an eviction policy on our cache to ensure stale results don't 
 
 Search Cache
 
-### 
+</div>
+</details>
 
-Great Solution: Use a CDN to cache at the edge
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Use a CDN to cache at the edge</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 In addition to the Redis search cache, we can also utilize edge caching via a Content Delivery Network (CDN) like Cloudflare or AWS Cloudfront. Most CDNs operate like a big set of geographically-spread HTTP caches. You configure an "origin" or target for the cache and configure DNS to route through the CDN. If the cache has the item the user is looking for, it can return it faster than almost any alternative option: most CDNs have locations very close to most users. If it doesn't hit the cache, the CDN will proxy the request back to your servers to handle.
 
@@ -303,13 +318,16 @@ Using the CDN here is simple: on the response to our /search endpoint, we can ad
 
 CDN
 
+</div>
+</details>
+
 ### 2) How can we handle multi-keyword, phrase queries?
 
 While sometimes our users might be searching for a single word like "Dog", they may also be searching for strings like "Taylor Swift" or even full excerpts like "All your base are belong". Many search engines support an entire boolean language for specifying queries like "+Taylor +Swift -Red" - let's assume the request here is simple: how can we answer queries for multi-word phrases?
 
-### 
-
-Good Solution: Intersection and Filter
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Intersection and Filter</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -330,9 +348,12 @@ The biggest challenges with this approach is that the Post ID set for "Taylor" a
 
 In the worst case if the keywords are heavily overlapping but the keywords don't appear next to each other as a phrase, we may be filtering out a ton of results which is going to be quite computationally intensive.
 
-### 
+</div>
+</details>
 
-Great Solution: Bigrams or Shingles
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Bigrams or Shingles</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -365,6 +386,9 @@ One potential remediation here is to only extract bigrams that are likely to be 
 
 But these all introduce more complexity and challenges!
 
+</div>
+</details>
+
 ### 3) How can we address the large volume of writes?
 
 The write volume for our system is very high. We have two sources of writes: post creation and likes on those posts. Let's talk about them separately.
@@ -391,11 +415,11 @@ We've partly handled the ingestion of new posts, but our need to index like coun
 
 This is a low-hanging opportunity to optimize our system. How can we reduce the number of writes we have to do to our indexes?
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Batch likes before writing to the database</summary>
+<div class="solution-card-body">
 
-Good Solution: Batch likes before writing to the database
-
-###### Approach
+##### Approach
 
 One approach we can take is to batch the writes for likes. Instead of writing every like update to our indexes, we can batch likes for a given postId over a period (like 30 seconds). Then, instead of needing to write 500 times for a particularly viral post, we can make 1 update with an increment of 500.
 
@@ -403,15 +427,18 @@ To do this we’ll need a secondary "batcher" service which accepts like events 
 
 Batch Likes
 
-###### Challenges
+##### Challenges
 
 While this approach will significantly improve on the like volume of the most viral posts, it won’t drastically reduce the volume of writes overall since _most posts aren't viral_. If a post receives 1 like per minute uniformly over a day, even though it receives 1,440 likes over that day we don't get any benefit from the batcher since we still have to write 1 like per minute. Worse, we introduce some additional overhead.
 
-### 
+</div>
+</details>
 
-Great Solution: Two stage architecture.
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Two stage architecture.</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 We can do even better by only updating the like count in our indexes when it passes specific milestones like powers of 2 or 10. So we would write to the index when the post has 1 like, 2 likes, 4 likes, etc. This reduces the number of writes exponentially - we no longer have to make 1000 writes for 1000 likes, we only have to make 10.
 
@@ -423,11 +450,14 @@ In this case our storage is an approximation but our end result is precise - it 
 
 Two Stage
 
-###### Challenges
+##### Challenges
 
 1.  This approach is more complex than the others and will require more engineering effort to implement.
     
 2.  This necessarily changes the semantics of the like counts within Elasticsearch. We might name them "logLikes" or "approxLikes" to make this clear to developers.
+
+</div>
+</details>
     
 
 ### 4) How can we optimize storage of our system?

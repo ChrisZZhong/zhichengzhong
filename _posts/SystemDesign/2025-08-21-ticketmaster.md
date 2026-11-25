@@ -244,11 +244,11 @@ If you've ever used similar sites to book event tickets, airline tickets, hotels
 
 We need to ensure that the ticket is locked for the user while they are checking out. We also need to ensure that if the user abandons the checkout process, the ticket is released for other users to purchase. Finally, we need to ensure that if the user completes the checkout process, the ticket is marked as sold and the booking is confirmed. Here are a couple ways we could do this:
 
-### 
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Pessimistic Locking</summary>
+<div class="solution-card-body">
 
-Bad Solution: Pessimistic Locking
-
-###### Approach
+##### Approach
 
 A bad solution many candidates propose for this problem is to use long-running database locks (sometimes referred to as "interactive transactions"). In this method, the database is directly utilized to lock a specific ticket row, ensuring exclusive access to the first user trying to book it. This is typically done using the SELECT FOR UPDATE statement in PostgreSQL, which locks the selected row(s) as part of a database transaction. The lock on the row is maintained until the transaction is either committed or rolled back. During this time, other transactions attempting to select the same row with SELECT FOR UPDATE will be blocked until the lock is released. This ensures that only one user can process the ticket booking at a time.
 
@@ -259,15 +259,18 @@ When it comes to unlocking, there are two cases we need to consider:
 2.  If the user takes too long or abandons the purchase, the system has to rely on their subsequent actions or session timeouts to release the lock. This introduces the risk of tickets being locked indefinitely if not appropriately handled.
     
 
-###### Challenges
+##### Challenges
 
 Why is this a bad idea? Well, database locks are meant to be used for short periods of time (a single, near-instant, transaction). Keeping a transaction open for a long period (like the 5-minute lock duration) is generally not advisable. It can strain database resources and increase the risk of lock contention and deadlocks. Additionally, SQL DBs like PostgreSQL doesn't natively support lock timeouts within transactions. Implementing a timeout would require application-level management and additional complexity. Finally, this approach may not scale well under high load, as prolonged locks can lead to increased wait times for other users and potential performance bottlenecks. Handling edge cases, such as application crashes or network issues, becomes more challenging, as these could leave locks in an uncertain state.
 
-### 
+</div>
+</details>
 
-Good Solution: Status & Expiration Time with Cron
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Status &amp; Expiration Time with Cron</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 A better solution is to lock the ticket by adding a status field and expiration time on the ticket table. The ticket can then be in 1 of 3 states: available, reserved, booked. This allows us to track the status of each ticket and automatically release the lock once the expiration time is reached. When a user selects a ticket, the status changes from "available" to "reserved", and the current timestamp is recorded.
 
@@ -278,7 +281,7 @@ Now lets think about how we handle unlocking with this approach:
 2.  If the user takes too long or abandons the purchase, the status changes back to "available" once the expiration time is reached, and the lock is released. The tricky part here is how we handle the expiration time. We could use a cron job to periodically query for rows with "reserved" status where the time elapsed exceeds the lock duration and then set them back to "available". This is much better, but the lag between the elapsed time and the time the row is changed is not ideal for popular events. Ideally, the lock should be removed almost exactly after expiration.
     
 
-###### Challenges
+##### Challenges
 
 Whether we use the cron job or on-demand approach, they both have significant drawbacks:
 
@@ -287,13 +290,15 @@ Cron Job Approach:
 *   Delay in Unlocking: There's an inherent delay between the ticket expiration and the cron job execution, leading to inefficiencies, particularly for high-demand events. Tickets might remain unavailable for purchase even after the expiration time, reducing booking opportunities.
     
 *   Reliability Issues: If the cron job experiences failures or delays, it can cause significant disruptions in the ticket booking process, leading to customer dissatisfaction and potential revenue loss.
-    
 
-### 
+</div>
+</details>
 
-Great Solution: Implicit Status with Status and Expiration Time
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Implicit Status with Status and Expiration Time</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 We can do even better than our cron-based solution by recognizing the status of any given ticket is the combination of two attributes: whether it's available OR whether it's been reserved but the reservation has expired. Rather than using long-running interactive transactions or locks, we can create short transactions to update the fields on the ticket record (e.g. changing "available" to "reserved" and setting expiration to +10 minutes). Inside these transactions we can confirm the ticket is available before reserving it or that the expiration on the previous reservation has passed.
 
@@ -310,15 +315,18 @@ So, in pseudocode, our transaction looks like this:
 
 This guarantees only one user will be able to reserve or book a ticket _and_ that users will be able to claim tickets from expired reservations.
 
-###### Challenges
+##### Challenges
 
 Our read operations are going to be be slightly slower by needing to filter on two values. We can partly solve this by utilizing materialized views or other features of modern RDBMS's together with a compound index. Our database table is also less legible for other consumers of the data, since some reservations are actually expired. We can solve that problem by utilizing a cron or periodic sweep job like above, with the very important difference that our system behavior will not be effected if that sweep is delayed.
 
-### 
+</div>
+</details>
 
-Great Solution: Distributed Lock with TTL
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Distributed Lock with TTL</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 Another great solution is to implement a [distributed lock](https://www.hellointerview.com/learn/system-design/in-a-hurry/key-technologies#distributed-lock) with a TTL (Time To Live) using a distributed system like [Redis](https://www.hellointerview.com/learn/system-design/deep-dives/redis). Redis is an in-memory data store that supports distributed locks and is well-suited for high-concurrency environments. It offers high availability and can be used to implement a distributed lock mechanism for the ticket booking process. Here is how it would work:
 
@@ -331,9 +339,12 @@ Another great solution is to implement a [distributed lock](https://www.helloint
 
 Now our Ticket table only has two states: available and booked. Locking of reserved tickets is handled entirely by Redis. The key-value pair in Redis is the ticket ID and the value is the user ID. This way we can ensure that when a user confirms the booking, they are the user who reserved the ticket.
 
-###### Challenges
+##### Challenges
 
 The main downside comes with handling failures. If our lock goes down for any reason, then we have a period of time where user experience is degraded. Note that we will still never have a "double booking" since our database will use OCC or any other concurrency control to ensure this. The downside is just that users can get an error after filling out their payment details if someone beats them to it. This sucks, but I would argue that it is a better outcome than having all tickets appear unavailable (as would be the case if the cron job in our previous solution failed).
+
+</div>
+</details>
 
 In this case, let's go with the great solution and use distributed lock. We can now update our design to support this flow.
 
@@ -371,11 +382,11 @@ Event pages get absolutely hammered when tickets go on sale - thousands of users
 
 [Learn This Pattern](/learn/system-design/patterns/scaling-reads)
 
-### 
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Caching, Load Balancing, and Horizontal Scaling</summary>
+<div class="solution-card-body">
 
-Great Solution: Caching, Load Balancing, and Horizontal Scaling
-
-###### Approach
+##### Approach
 
 Caching
 
@@ -403,7 +414,7 @@ Horizontal Scaling
 *   The Event Service is stateless which allows us to horizontally scale it to meet demand. We can do this by adding more instances of the service and load balancing between them.
     
 
-###### Challenges
+##### Challenges
 
 *   One of the primary challenges is maintaining consistency between the cache and the database. This is particularly challenging with frequent updates to event details (but we don't expect this)
     
@@ -412,29 +423,35 @@ Horizontal Scaling
 
 Caching
 
+</div>
+</details>
+
 ### 3) How will the system ensure a good user experience during high-demand events with millions simultaneously booking tickets?
 
 With popular events, the loaded seat map will go stale quickly. Users will grow frustrated as they repeatedly click on a seat, only to find out it has already been booked. We need to ensure that the seat map is always up to date and that users are notified of changes in real-time.
 
 Sometimes the best solution is actually not technically more challenging. The mark of a senior/staff engineer is their ability to solve business problems and sometimes that means thinking outside the box of presumed constraints. The below Good and Great solutions are illustrative of a common delta between senior and staff candidates.
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: SSE for Real-Time Seat Updates</summary>
+<div class="solution-card-body">
 
-Good Solution: SSE for Real-Time Seat Updates
-
-**Approach**
+##### Approach
 
 To ensure that the seat map is always up to date, we can use [Server-Sent Events (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) to push updates to the client in real-time. This will allow us to update the seat map as soon as a seat is booked (or reserved) by another user without needing to refresh the page. SSE is a unidirectional communication channel between the server and the client. It allows the server to push data to the client without the client having to request it.
 
-**Challenges**
+##### Challenges
 
 While this approach works well for moderately popular events, the user experience will still suffer during extremely popular events. In the "Taylor Swift case," for example, the seat map will immediately fill up, and users will be left with a disorienting and overwhelming experience as available seats disappear in an instant.
 
-### 
+</div>
+</details>
 
-Great Solution: Virtual Waiting Queue for Extremely Popular Events
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Virtual Waiting Queue for Extremely Popular Events</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 For extremely popular events, we can implement an admin enabled virtual waiting queue system to manage user access during times of exceptionally high demand. Users are placed in this queue before even being able to see the booking page (seat map selected). It is designed to control the flow of users accessing the booking interface, thereby preventing system overload and enhancing the user experience. Here is how it would work at a high level:
 
@@ -445,7 +462,7 @@ For extremely popular events, we can implement an admin enabled virtual waiting 
 3.  At the same time, update the database to reflect that this user is now allowed to access the ticket purchasing system.
     
 
-###### Challenges
+##### Challenges
 
 Long wait times in the queue might lead to user frustration, especially if the estimated wait times are not accurate or if the queue moves slower than expected. By pushing updates to the client in real-time, we can mitigate this risk by providing users with constant feedback on their queue position and estimated wait time.
 
@@ -456,6 +473,9 @@ While we wouldn't pull the trigger on SSE for this use-case, many systems involv
 [Learn This Pattern](/learn/system-design/patterns/realtime-updates)
 
 Virtual Waiting Room
+
+</div>
+</details>
 
 ### 4) How can you improve search to ensure we meet our low latency requirements?
 
@@ -469,46 +489,50 @@ Our current search implementation is not going to cut it. Queries to search for 
 
 Let's look at some strategies to improve search performance and ensure we meet our low latency requirements.
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Indexing &amp; SQL Query Optimization</summary>
+<div class="solution-card-body">
 
-Good Solution: Indexing & SQL Query Optimization
-
-###### Approach
+##### Approach
 
 *   Create indexes on the Event, Performer, and Venues tables to improve query performance. Indexes allow for faster data retrieval by mapping the values in specific columns to their corresponding rows in the table. This speeds up search queries by reducing the number of rows that need to be scanned. We want to index the columns that are frequently used in search queries, such as event name, event date, performer name, and venue location.
     
 *   Optimize queries to improve performance. This includes techniques like using EXPLAIN to analyze query execution plans, avoiding SELECT \* queries, and using LIMIT to restrict the number of rows returned. Additionally, using UNION instead of OR for combining multiple queries can improve performance.
     
 
-###### Challenges
+##### Challenges
 
 *   Standard indexes are less effective for queries involving partial string matches (e.g., searching for "Taylor" instead of the full "Taylor Swift"). This requires additional considerations, like implementing full-text search capabilities or using LIKE operators, which can be less efficient.
     
 *   While indexes improve query performance, they can also increase storage requirements and slow down write operations, as each insert or update may necessitate an index update.
     
 *   Finding the right balance between the number of indexes and overall database performance, especially considering the diverse and complex query patterns in a ticketing system.
-    
 
-### 
+</div>
+</details>
 
-Great Solution: Full-text Indexes in the DB
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Full-text Indexes in the DB</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 We can extend the basic indexing strategy above to utilize full-text indexes in our database, if available. For popular SQL databases like MySQL or Postgres, full text extensions are available which utilize search engines like Lucene under the covers. These make queries for specific strings like "Taylor" or "Swift" much faster than doing a full table scan using LIKE.
 
-###### Challenges
+##### Challenges
 
 *   Full text indexes require additional storage space and can be slower to query than standard indexes.
     
 *   Full text indexes can be more difficult to maintain, as they require special handling in both queries and in maintaining the database.
-    
 
-### 
+</div>
+</details>
 
-Great Solution: Use a Full-text Search Engine like Elasticsearch
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Use a Full-text Search Engine like Elasticsearch</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 Add [Elasticsearch](/learn/system-design/deep-dives/elasticsearch) or a similar [full-text search engine](https://www.hellointerview.com/learn/system-design/in-a-hurry/key-technologies#search-optimized-database). Elasticsearch is a powerful search engine that excels in full-text search, complex query execution, and handling high-volume traffic efficiently. At its core, Elasticsearch operates using inverted indexes, a key feature that makes it highly efficient for search operations. Inverted indexes allow Elasticsearch to quickly locate and retrieve data by mapping each unique word to the documents or records it appears in, significantly speeding up search queries.
 
@@ -517,7 +541,7 @@ Add [Elasticsearch](/learn/system-design/deep-dives/elasticsearch) or a similar 
 *   We can enable fuzzy search functionality with Elasticsearch, which allows for error tolerance in search queries. This is way we can handle typos and slight variations in spellings such as "Taylor Swift" vs "Tayler Swift". This is something that would be very difficult to do with SQL alone.
     
 
-###### Challenges
+##### Challenges
 
 *   Keeping the Elasticsearch index synchronized with PostgreSQL can be complex and requires a reliable mechanism to ensure data consistency.
     
@@ -526,13 +550,16 @@ Add [Elasticsearch](/learn/system-design/deep-dives/elasticsearch) or a similar 
 
 Excalidraw
 
+</div>
+</details>
+
 ### 5) How can you speed up frequently repeated search queries and reduce load on our search infrastructure?
 
-### 
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Implement Caching Strategies Using Redis or Memcached</summary>
+<div class="solution-card-body">
 
-Good Solution: Implement Caching Strategies Using Redis or Memcached
-
-###### Approach
+##### Approach
 
 Use caching mechanisms like Redis or Memcached to store the results of frequently executed search queries. This reduces the load on the search infrastructure by serving repeated queries from the cache instead of hitting the database or search engine repeatedly.
 
@@ -549,28 +576,33 @@ For example, a cache entry may look like:
       "ttl": 60 * 60 * 24 // 24 hours
     }
 
-###### Challenges
+##### Challenges
 
 *   Efficiently managing cache invalidation can be challenging. Stale or outdated data in the cache can lead to incorrect search results being served to users. This becomes increasingly complex if you cache fuzzy search results. You can use a combination of TTLs and cache invalidation triggers built around cache tags to ensure data consistency.
     
 *   Frequent cache misses can lead to increased load on the search infrastructure, especially during peak times.
-    
 
-### 
+</div>
+</details>
 
-Great Solution: Implement Query Result Caching and Edge Caching Techniques
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Implement Query Result Caching and Edge Caching Techniques</summary>
+<div class="solution-card-body">
 
-###### Approach
+##### Approach
 
 Conveniently, Elasticsearch has built-in caching capabilities that can be leveraged to store results of frequent queries. This reduces the query processing load on the search engine itself. The node query cache in Elasticsearch is an LRU cache shared by all shards on a node, caching results of queries used in the filter. Additionally, Elasticsearch's shard-level request cache is used for caching search responses consisting of aggregation. This can be used for adaptive caching strategies, where the system learns and caches results of the most frequently executed queries over time.
 
 We can also utilize CDNs to cache search results geographically closer to the user, reducing latency and improving response times. For example, this could mean integrating [AWS CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/QueryStringParameters.html). Note, this only makes sense if search results are not personalized, meaning that the same search query will return the same results for all users.
 
-###### Challenges
+##### Challenges
 
 *   Ensuring consistency between cached data and real-time data requires sophisticated synchronization mechanisms. You need to ensure you invalidate the cache whenever the underlying data changes (like when a new event is announced). Since search queries and the potential results aren't connected, this is a challenge.
     
 *   This approach demands more infrastructure support, including integration with CDNs and managing adaptive caching systems.
+
+</div>
+</details>
     
 
 As you progress through the deep dives, you should be updating your design to reflect the changes you are making. After doing so, you could have a final design looks something like this:

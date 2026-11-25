@@ -118,9 +118,9 @@ Handle Redirect
 
 There are two ways we can handle this redirect, with one being simpler and the other being more robust.
 
-### 
-
-Good Solution: Client side redirect
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Client side redirect</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -130,9 +130,12 @@ The simplest thing we can do is send over a redirect URL with each ad that's pla
 
 The downside with this approach is that users could go to an advertiser's website without us knowing about it. This could lead to discrepancies in our click data and make it harder for advertisers to track the performance of their ads. Sophisticated users could grab the url off of the page and navigate to it directly, bypassing our click tracking entirely. Someone would probably build a browser extension to do this.
 
-### 
+</div>
+</details>
 
-Great Solution: Server side redirect
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Server side redirect</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -144,15 +147,18 @@ This way, we can ensure that we track every click and provide a consistent exper
 
 The only downside is the added complexity, which could slow down the user experience. We need to make sure that our system can handle the additional load and respond quickly to the user's request.
 
+</div>
+</details>
+
 ### 2) Advertisers can query ad click metrics over time at 1 minute intervals
 
 Our users were successfully redirected, now let's focus on the advertisers. They need to be able to quickly query metrics about their ads to see how they're performing. We'll expand on the click processor path that we introduced above by breaking down some options for how a click is processed and stored.
 
 Once our /click endpoint receives a request what happens next?
 
-### 
-
-Bad Solution: Store and Query From the Same Database
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Store and Query From the Same Database</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -190,9 +196,12 @@ Store and Query From the Same Database
 
 Frankly, at our scale, this solution sucks. The database will quickly become a bottleneck as we scale up to 10k clicks per second. The GROUP BY query will be slow and inefficient, and we won't be able to provide low latency queries to advertisers -- breaking our non-functional requirement.
 
-### 
+</div>
+</details>
 
-Good Solution: Separate Analytics Database with Batch Processing
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Separate Analytics Database with Batch Processing</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -245,9 +254,12 @@ This solution works, and it works pretty well, but there are several key challen
 
 While the simple inclusion of a queue between the click processor and the event store would help with the scalability issue, it would not solve the latency problem. To address both of these challenges, we can introduce a stream processing design that processes events in real-time.
 
-### 
+</div>
+</details>
 
-Great Solution: Real-time Analytics With Stream Processing
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Real-time Analytics With Stream Processing</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -275,6 +287,9 @@ Now, when a click comes in:
 Astute readers may recognize that the latency from click to query between this solution and the "good" solution is not all that different depending on what aggregation window we choose for Flink and how often we run Spark jobs. If we aggregate on minute boundaries and also run our Spark jobs every minute, the latency is about the same (just slightly higher for the batch processing solution due to the time it takes to run the Spark job). That said, we have levers to play with. It's much more realistic for us to decrease the Flink aggregation window than it is for us to increase the Spark job frequency given the overhead of running Spark jobs. This means we could aggregate clicks every couple of seconds with this streaming approach to decrease latency, while we'd be hard-pressed to run Spark jobs every couple of seconds.
 
 Even better, Flink has flush intervals that can be configured, so we can aggregate on a minute boundary but flush the results every couple of seconds. This way, we get the best of both worlds, and the latest minute's data will just be incomplete until the minute boundary is reached, which would be the expected behavior.
+
+</div>
+</details>
 
 [Potential Deep Dives](https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery#deep-dives-10-minutes)
 --------------------------------------------------------------------------------------------------------------------
@@ -332,9 +347,9 @@ While modern systems have advanced fraud detection systems, which we have consid
 
 Let's breakdown a couple of ways to do this:
 
-### 
-
-Bad Solution: Add userId To Click Event Payload
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Add userId To Click Event Payload</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -348,9 +363,12 @@ This approach has some serious limitations. First, it requires that all users ar
 
 Consider retargeting, where we intentionally show the same ad to the same user multiple times over an extended period. We need to amend our problem statement to say that we only count one click per user per ad _instance_. This is a subtle but important distinction, and our current solution does not account for it.
 
-### 
+</div>
+</details>
 
-Great Solution: Generate a Unique impression ID
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Generate a Unique impression ID</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -384,6 +402,9 @@ Let's recap:
 This solution is not without its challenges. We've added complexity, and the cache could potentially become a bottleneck if not properly scaled. That said, it's worth noting that the cache data should be relatively small. With 100 million per day, if these were all unique impressions, then that's only 100 million \* 16 bytes (128 bits) = 1.6 GB. Tiny.
 
 Regardless, we can easily play it safe by using a distributed cache like Redis Cluster or Memcached to scale. In the event the cache goes down, we would handle this by having a replica of the cache that could take over and by enabling cache persistence so the cache data is not lost.
+
+</div>
+</details>
 
 ### 4) How can we ensure that advertisers can query metrics at low latency?
 

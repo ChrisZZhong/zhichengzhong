@@ -159,9 +159,9 @@ With each of these requests, the user information will be passed in the headers 
 
 The first requirement of Robinhood is allowing users to see the live price of stocks. This might be one stock or many stocks, depending on what the user is viewing in the UI. To keep our design extensible, let's assume a user can see many live stock prices at once. To support this design, let's analyze a few options.
 
-### 
-
-Bad Solution: Polling Exchange Directly
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Polling Exchange Directly</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -180,9 +180,12 @@ For a design like this, we can rule out polling the exchange directly as a viabl
 
 Polling
 
-### 
+</div>
+</details>
 
-Good Solution: Polling Internal Cache
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Polling Internal Cache</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -196,9 +199,12 @@ This approach is certainly an improvement, but is still subject to some issues. 
 
 Polling Internal Cache
 
-### 
+</div>
+</details>
 
-Great Solution: Server Sent Event (SSE) Price Updates
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Server Sent Event (SSE) Price Updates</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -218,15 +224,18 @@ Adding SSE introduces challenges, mainly involving maintaining a connection betw
 
 SSE
 
+</div>
+</details>
+
 ### 2) Users can manage orders for stocks
 
 The second requirement of Robinhood is allowing users to manage orders for stocks. Users should be able to create orders (limit or market), cancel outstanding orders, and list user orders.
 
 Let's consider our options for creating and cancelling orders via the exchange.
 
-### 
-
-Bad Solution: Send Orders Directly to Exchange
+<details class="solution-card" data-rating="bad">
+<summary>Bad Solution: Send Orders Directly to Exchange</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -240,9 +249,12 @@ Let's consider other solutions.
 
 Send Direct
 
-### 
+</div>
+</details>
 
-Good Solution: Send Orders to Dispatch Service via Queue
+<details class="solution-card" data-rating="good">
+<summary>Good Solution: Send Orders to Dispatch Service via Queue</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -258,9 +270,12 @@ What other options do we have?
 
 Dispatch Via Queue
 
-### 
+</div>
+</details>
 
-Great Solution: Order Gateway
+<details class="solution-card" data-rating="great">
+<summary>Great Solution: Order Gateway</summary>
+<div class="solution-card-body">
 
 ##### Approach
 
@@ -275,6 +290,9 @@ Given that the gateway is managing outbound requests, this approach relies on th
 This approach requires our order service to do more to manage orders, meaning it will need to be written in a way that is both efficient for client interaction and efficient for exchange interaction (e.g. potentially batching orders together).
 
 Order Gateway
+
+</div>
+</details>
 
 Now that we know how we'll dispatch orders to the exchange, we also must consider how we'll store orders on our side for the purposes of exposing them to the user. The user should be able to GET /orders to see all their outstanding orders, so how might we keep data on our side to service this request?
 
