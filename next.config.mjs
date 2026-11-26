@@ -79,8 +79,22 @@ function postRedirects(category, posts, aliases = [category]) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: { outputFileTracingIncludes: { '/blog/*': ['./_posts/**/*.md'] } },
+  experimental: {
+    outputFileTracingIncludes: {
+      '/blog/*': ['./_posts/**/*.md'],
+      '/blog/diagrams/**': ['./_posts/**/*.md', './diagrams/**/*.svg'],
+    },
+  },
   transpilePackages: ['mermaid'],
+  async headers() {
+    return [{
+      source: '/media/diagrams/:path*',
+      headers: [{
+        key: 'Content-Security-Policy',
+        value: "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; sandbox",
+      }],
+    }];
+  },
   async redirects() {
     return [
       {

@@ -7,6 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import type { Components } from 'react-markdown';
+import { markPreviewDrawingBlocks, type DrawingInsertion } from '@/lib/preview-drawing-markers';
 
 const MermaidDiagram = dynamic(() => import('./MermaidDiagram'), { ssr: false });
 const ExcalidrawDiagram = dynamic(() => import('./ExcalidrawDiagram'), {
@@ -16,6 +17,12 @@ const ExcalidrawDiagram = dynamic(() => import('./ExcalidrawDiagram'), {
 
 interface Props {
   content: string;
+  editing?: {
+    imageBase: string;
+    previews: Record<string, string>;
+    insertDrawing: (insertion: DrawingInsertion) => void;
+    editDrawing: (src: string, alt: string, start: number, end: number) => void;
+  };
 }
 
 /** Convert heading text to a URL-safe id (same logic as server-side extractHeadings) */
@@ -38,7 +45,7 @@ function extractText(children: React.ReactNode): string {
   return '';
 }
 
-export default function BlogPostContent({ content }: Props) {
+export default function BlogPostContent({ content, editing }: Props) {
   const components: Components = {
     // Headings with auto-generated ids for TOC anchor links
     h1({ children }) {
@@ -123,15 +130,24 @@ export default function BlogPostContent({ content }: Props) {
       );
     },
     // Images
-    img({ src, alt }) {
+    img({ src, alt, node }) {
       const isExcalidraw = src?.split(/[?#]/, 1)[0].toLowerCase().endsWith('.excalidraw');
+      const canEditDrawing = editing && src?.startsWith(editing.imageBase) && src.endsWith('.svg');
+      const preview = src && editing?.previews[src];
+      const start = node?.position?.start.offset;
+      const end = node?.position?.end.offset;
       return (
         <span className="block my-6">
           {isExcalidraw && src ? <ExcalidrawDiagram key={src} src={src} alt={alt ?? ''} /> : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt={alt || ''} className="rounded-xl border border-card-border max-w-full mx-auto" />
+            <img src={preview || src} alt={alt || ''} className="rounded-xl border border-card-border max-w-full mx-auto" />
           )}
           {alt && <span className="block text-center text-xs text-text-muted mt-2 italic">{alt}</span>}
+          {canEditDrawing && editing && src && start !== undefined && end !== undefined && (
+            <button type="button" className="mx-auto mt-2 block rounded-md border border-card-border px-2.5 py-1 text-xs text-text-primary hover:bg-space" onClick={() => editing.editDrawing(src, alt ?? '', start, end)}>
+              Edit drawing
+            </button>
+          )}
         </span>
       );
     },
@@ -150,11 +166,28 @@ export default function BlogPostContent({ content }: Props) {
     },
   };
 
+  if (editing) {
+    components.span = function PreviewSpan({ node, children, ...props }) {
+      const offset = node?.properties.drawingMarkerOffset;
+      if (typeof offset !== 'number' || !node) return <span {...props}>{children}</span>;
+      const indent = node.properties.drawingMarkerIndent;
+      const insertion = {
+        offset,
+        indent: typeof indent === 'string' ? indent : '',
+      };
+      return (
+        <button type="button" className="mb-4 block rounded-md border border-dashed border-card-border px-2.5 py-1 text-xs text-text-muted hover:border-accent-cyan hover:text-text-primary" onClick={() => editing.insertDrawing(insertion)}>
+          + Insert Excalidraw here
+        </button>
+      );
+    };
+  }
+
   return (
     <div className="blog-prose">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        rehypePlugins={editing ? [rehypeRaw, [markPreviewDrawingBlocks, content]] : [rehypeRaw]}
         components={components}
       >
         {content}

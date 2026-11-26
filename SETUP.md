@@ -65,6 +65,26 @@ Save a drawing under `public/media/` and reference it using the usual Markdown i
 
 For a static image, export SVG from Excalidraw and use the same syntax with `.svg`. Keep the editable source outside `public/` if you only want to publish the exported image.
 
+### Edit blog posts and drawings locally
+
+```bash
+npm run blog:edit
+```
+
+Open [the local blog](http://127.0.0.1:3000/blog). Select a post and click **Unlock editing**, then enter the Interviews password. The same session enables **Edit post** across blog categories, including Interviews. Use the Markdown toolbar for headings, lists, and code blocks. Use **Undo** and **Redo** or the browser's usual editing shortcuts.
+
+In the preview, use **Insert Excalidraw here** after a Markdown paragraph or complete block. A blank line between prose lines starts a new paragraph. Multiple sentences and soft line breaks in one paragraph share a single button. Solution cards support the same placement inside their content. Click **Insert drawing** to place the image in the draft, then **Save to workspace** to write your changes.
+
+To reuse shapes copied from Excalidraw, click the drawing canvas and paste with **Cmd+V** or **Ctrl+V**.
+
+The article's URL path determines both drawing folders:
+
+- Editable source in `diagrams/<category>/<post-slug>/<drawing>.excalidraw`
+- Public article SVG in `public/media/diagrams/<category>/<post-slug>/<drawing>.svg`
+- Password-protected article SVG alongside its source in `diagrams/<category>/<post-slug>/<drawing>.svg`, served through the blog's password check
+
+Click **Edit drawing** on a managed diagram to reopen its source. Saving a revision updates the article's image link and keeps the previous drawing files. Save to the workspace, then commit the Markdown and both drawing files together when you are ready to publish. Editing is available to the local authoring server on `127.0.0.1`.
+
 ### System Design solution cards
 
 Place alternatives under their shared question heading. Use one `<details>` per solution with a one-line `<summary>`. Use `data-rating="great"` for pale green, `data-rating="good"` for pale yellow, and `data-rating="bad"` for pale red. Cards start collapsed and open independently.

@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 
-export default function PasswordGate({ salt }: { salt: string }) {
+export default function PasswordGate({ salt, forEditing = false }: { salt: string; forEditing?: boolean }) {
   const { lang } = useLanguage();
   const zh = lang === 'zh';
   const [busy, setBusy] = useState(false);
@@ -35,7 +35,9 @@ export default function PasswordGate({ salt }: { salt: string }) {
   return (
     <form onSubmit={unlock} className="glass-card max-w-md p-6 space-y-4">
       <label htmlFor="blog-password" className="block font-semibold">
-        {zh ? '输入密码以阅读面试文章' : 'Enter the password to read the interview posts'}
+        {forEditing
+          ? (zh ? '输入面试文章密码，解锁本地编辑' : 'Enter the interview posts password to unlock local editing')
+          : (zh ? '输入密码以阅读面试文章' : 'Enter the password to read the interview posts')}
       </label>
       <input id="blog-password" name="password" type="password" required autoComplete="current-password"
         onChange={() => setError(null)} aria-invalid={error === 'password'}

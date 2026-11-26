@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import PasswordGate from '@/components/PasswordGate';
 import { accessCookie, passwordSalt, validAccessProof } from '@/lib/blog-access';
-import { getBlogHref, getPostHref } from '@/lib/post-url';
+import { getBlogHref, getPostHref, parsePostSlug } from '@/lib/post-url';
 import { getPostBySlug, getAllPostsMeta } from '@/lib/posts';
+import { canEditLocally, getLocalEditorPaths } from '@/lib/local-blog-editor';
 import BlogPostContent from '@/components/BlogPostContent';
 import TableOfContents from '@/components/TableOfContents';
 import type { TocHeading } from '@/components/TableOfContents';
@@ -14,12 +15,6 @@ import type { Metadata } from 'next';
 
 interface Props {
   params: { slug: string[] };
-}
-
-function paramsToSlug(parts: string[]): string {
-  // Next.js 14 encodes dynamic params, including '&' in Java&Spring.
-  // Decode each segment once before looking up the Markdown file.
-  return parts.map((part) => decodeURIComponent(part)).join('/');
 }
 
 /** Same slugify logic as the client-side one in BlogPostContent */
@@ -56,8 +51,8 @@ function extractHeadings(content: string): TocHeading[] {
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const slug = paramsToSlug(params.slug);
-  const post = getPostBySlug(slug);
+  const slug = parsePostSlug(params.slug);
+  const post = slug && getPostBySlug(slug);
   if (!post) return { title: 'Post Not Found' };
   return {
     title: `${post.title} | Zhicheng Zhong`,
@@ -67,11 +62,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function BlogPostPage({ params }: Props) {
-  const slug = paramsToSlug(params.slug);
+  const slug = parsePostSlug(params.slug);
+  if (!slug) notFound();
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const locked = post.protected && !validAccessProof(cookies().get(accessCookie)?.value);
+  const localEditing = canEditLocally(headers().get('host'));
+  const unlocked = (post.protected || localEditing) && validAccessProof(cookies().get(accessCookie)?.value);
+  const locked = post.protected && !unlocked;
   const headings = locked || post.toc === false ? [] : extractHeadings(post.content);
   const original = !locked && post.originalSource && slug.startsWith(patternPostSlugPrefix)
     ? {
@@ -103,6 +101,11 @@ export default function BlogPostPage({ params }: Props) {
           </Link>
           <span className="text-card-border">/</span>
           <span className="text-text-muted text-sm truncate">{post.title}</span>
+          {localEditing && (
+            <Link href={getLocalEditorPaths(post).editorHref} className="ml-auto shrink-0 rounded-lg border border-card-border px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-card-bg">
+              {unlocked ? 'Edit post' : 'Unlock editing'}
+            </Link>
+          )}
         </div>
       </div>
 
