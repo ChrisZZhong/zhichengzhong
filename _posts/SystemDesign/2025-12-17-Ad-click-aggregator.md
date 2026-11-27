@@ -65,16 +65,6 @@ With that in mind, let's document the non-functional requirements:
 *   Conversion tracking
     
 
-Here's how it might look on your whiteboard:
-
-Requirements
-
-### Design Recap
-
-1. **Aggregate on each dashboard query.** Store raw click events in the database. Each dashboard request filters by ad and time range, then groups the matching clicks by minute. This is simple to build, but repeated queries scan the same events and compete with click writes.
-2. **Pre-aggregate in batches.** Run a scheduled job that groups new clicks by ad and minute and writes the counts to a separate analytics database. The dashboard reads precomputed rows quickly, but new clicks are only visible after the next batch finishes.
-3. **Aggregate continuously with Flink.** Send click events through Kafka. Flink updates per-ad, one-minute counts as events arrive and periodically writes them to the analytics database. The dashboard keeps the same fast read path and sees fresher counts. The latest minute can still be in progress.
-
 The Set Up
 ----------
 
@@ -127,6 +117,8 @@ There are two ways we can handle this redirect, with one being simpler and the o
 
 The simplest thing we can do is send over a redirect URL with each ad that's placed on the website. When a user clicks on the ad, the browser will automatically redirect them to the target URL. It's simple, straightforward, and requires no additional server side logic. We would then, in parallel, POST to our /click endpoint to track the click.
 
+![Client Side Redirect](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/client-side-redirect-965abd9d.svg)
+
 ##### Challenges
 
 The downside with this approach is that users could go to an advertiser's website without us knowing about it. This could lead to discrepancies in our click data and make it harder for advertisers to track the performance of their ads. Sophisticated users could grab the url off of the page and navigate to it directly, bypassing our click tracking entirely. Someone would probably build a browser extension to do this.
@@ -141,6 +133,8 @@ The downside with this approach is that users could go to an advertiser's websit
 ##### Approach
 
 A more robust solution is to have the user click on the ad, which will then send a request to our server. Our server can then track the click and respond with a redirect to the advertiser's website via a 302 (redirect) status code.
+
+![Server Sider Redirect](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/server-sider-redirect-e7cb9efd.svg)
 
 This way, we can ensure that we track every click and provide a consistent experience for users and advertisers. This approach also allows us to append additional tracking parameters to the URL, which can help the advertiser track the source of the click, but this is out of scope so we won't go into more detail here.
 
@@ -165,21 +159,7 @@ Once our /click endpoint receives a request what happens next?
 
 When a click comes in from a user, we can simply store that click event in our database. The schema would look something like this:
 
-EventId
-
-Ad Id
-
-User Id
-
-Timestamp
-
-1
-
-123
-
-456
-
-1640000000
+![AD DB](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/ad-db-9b2037a7.svg)
 
 Then, when an advertiser wants to query metrics, we would query the database for all events that match the ad ID and time range running a GROUP BY query to get the metrics that they need. For example,
 
@@ -192,6 +172,9 @@ Then, when an advertiser wants to query metrics, we would query the database for
       GROUP BY AdId
 
 Store and Query From the Same Database
+
+![Aggregate when Query](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/architecture-diagram-2e5a78c5.svg)
+
 
 ##### Challenges
 
@@ -248,6 +231,7 @@ Batch Processing
     
 5.  Advertisers can query the OLAP database to get metrics on their ads.
     
+![batch processing](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/batch-processing-b19b7d51.svg)
 
 ##### Challenges
 
@@ -270,6 +254,8 @@ When a click comes in our click processing service will immediately write the ev
 
 This works by keeping a running count of click totals in memory and updating them as new events come in. When we reach the end of a time window, we can flush the aggregated data to our OLAP database.
 
+![Stream processing](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/stream-processing-91030a95.svg)
+
 Real-time Analytics With Stream Processing
 
 Now, when a click comes in:
@@ -282,6 +268,7 @@ Now, when a click comes in:
     
 4.  Advertisers can query the OLAP database to get metrics on their ads in near real-time.
     
+
 
 ##### Challenges
 
@@ -341,6 +328,8 @@ At the end of the stream, alongside the stream processors, we can also dump the 
 Reconciliation
 
 This essentially combines our two solutions, real-time stream processing and periodic batch processing, to ensure that our data is not only fast but also accurate.
+
+![Reconncilation](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/reconncilation-0a9c03e6.svg)
 
 ### 3) How can we prevent abuse from users clicking on ads multiple times?
 
@@ -420,6 +409,8 @@ Pre-aggregating the data in the OLAP database is a common technique to improve q
 Putting it all together, one final design could look like this:
 
 Final Design
+
+![Final Design](/media/diagrams/SystemDesign/2025-12-17-Ad-click-aggregator/final-design-88d5fd81.svg)
 
 [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
 ---------------------------------------------------------------------------------------------------------------------------------
